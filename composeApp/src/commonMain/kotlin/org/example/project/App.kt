@@ -18,11 +18,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.example.project.data.SharedViewModel
 import org.example.project.theme.AppTheme
 
 @Composable
-fun MobileScreen() {
-    val drawerState = rememberDrawerState(DrawerValue.Open)
+fun MobileScreen(
+    sharedViewModel: SharedViewModel,
+    onUploadDirectory: () -> Unit,
+) {
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     ModalNavigationDrawer(
@@ -33,7 +37,13 @@ fun MobileScreen() {
             ) {
                 SidePanel(
                     modifier = Modifier.fillMaxHeight()
-                        .padding(8.dp)
+                        .padding(8.dp),
+                    onUploadDirectory = {
+                        onUploadDirectory()
+                        scope.launch {
+                            drawerState.close()
+                        }
+                    },
                 )
             }
         },
@@ -49,14 +59,18 @@ fun MobileScreen() {
                     scope.launch {
                         if (drawerState.isOpen) drawerState.close() else drawerState.open()
                     }
-                }
+                },
+                sharedViewModel = sharedViewModel,
             )
         }
     }
 }
 
 @Composable
-fun DesktopScreen() {
+fun DesktopScreen(
+    sharedViewModel: SharedViewModel,
+    onUploadDirectory: () -> Unit,
+) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
     ) { innerPadding ->
@@ -71,7 +85,8 @@ fun DesktopScreen() {
                         color = MaterialTheme.colorScheme.surfaceContainer,
                         shape = RoundedCornerShape(12.dp)
                     )
-                    .padding(24.dp)
+                    .padding(24.dp),
+                onUploadDirectory,
             )
 
             MainPanel(
@@ -79,25 +94,32 @@ fun DesktopScreen() {
                     .weight(2f)
                     .padding(24.dp),
                 onOpenDrawer = null,
+                sharedViewModel = sharedViewModel,
             )
         }
     }
 }
 
 @Composable
-fun App(windowSizeClass: WindowSizeClass) {
+fun App(
+    windowSizeClass: WindowSizeClass,
+    sharedViewModel: SharedViewModel,
+    onUploadDirectory: () -> Unit,
+) {
     AppTheme {
         when (windowSizeClass) {
-            WindowSizeClass.Compact -> {
-                MobileScreen()
-            }
-
-            WindowSizeClass.Medium -> {
-                MobileScreen()
+            WindowSizeClass.Compact, WindowSizeClass.Medium -> {
+                MobileScreen(
+                    sharedViewModel = sharedViewModel,
+                    onUploadDirectory = onUploadDirectory,
+                )
             }
 
             WindowSizeClass.Expanded -> {
-                DesktopScreen()
+                DesktopScreen(
+                    sharedViewModel = sharedViewModel,
+                    onUploadDirectory = onUploadDirectory,
+                )
             }
         }
     }

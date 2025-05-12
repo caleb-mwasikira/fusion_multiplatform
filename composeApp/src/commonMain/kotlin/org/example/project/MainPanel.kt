@@ -1,14 +1,12 @@
 package org.example.project
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,11 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,23 +40,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import minio_multiplatform.composeapp.generated.resources.Res
-import minio_multiplatform.composeapp.generated.resources.doc
-import minio_multiplatform.composeapp.generated.resources.excel
+import minio_multiplatform.composeapp.generated.resources.chevron_left_24dp
+import minio_multiplatform.composeapp.generated.resources.chevron_right_24dp
 import minio_multiplatform.composeapp.generated.resources.external_hard_drive
-import minio_multiplatform.composeapp.generated.resources.folder
 import minio_multiplatform.composeapp.generated.resources.menu_24dp
 import minio_multiplatform.composeapp.generated.resources.notifications_24dp
-import minio_multiplatform.composeapp.generated.resources.pdf
 import minio_multiplatform.composeapp.generated.resources.person_24dp
-import minio_multiplatform.composeapp.generated.resources.powerpoint
 import minio_multiplatform.composeapp.generated.resources.search_24dp
-import minio_multiplatform.composeapp.generated.resources.zip_folder
-import org.example.project.data.dirEntries
+import minio_multiplatform.composeapp.generated.resources.visibility_24dp
+import minio_multiplatform.composeapp.generated.resources.visibility_off_24dp
+import org.example.project.data.DirEntry
+import org.example.project.data.FileType
+import org.example.project.data.SharedViewModel
 import org.example.project.data.formatFileSize
 import org.example.project.data.formatLastModified
-import org.example.project.data.getFileIcon
+import org.example.project.data.openDocument
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import java.util.Locale
@@ -67,6 +65,7 @@ import java.util.Locale
 @Composable
 fun MainPanel(
     modifier: Modifier,
+    sharedViewModel: SharedViewModel,
     onOpenDrawer: (() -> Unit)?
 ) {
     Column(
@@ -94,9 +93,19 @@ fun MainPanel(
             )
         }
 
-        QuickAccess()
+        val files by sharedViewModel.files.collectAsState()
 
-        MyFiles()
+        QuickAccess(
+            selectedFileFilter = sharedViewModel.selectedFileFilter,
+            selectFileFilter = { filter ->
+                sharedViewModel.selectFileFilter(filter)
+            }
+        )
+
+        MyFiles(
+            files = files,
+            sharedViewModel = sharedViewModel,
+        )
     }
 }
 
@@ -110,7 +119,7 @@ fun TopBar(
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             onOpenDrawer?.let {
@@ -120,6 +129,8 @@ fun TopBar(
                     Icon(
                         painter = painterResource(Res.drawable.menu_24dp),
                         contentDescription = "Menu",
+                        modifier = Modifier.size(28.dp)
+                            .weight(1f)
                     )
                 }
             }
@@ -131,6 +142,7 @@ fun TopBar(
                 onValueChange = { newText ->
                     searchText = newText
                 },
+                modifier = Modifier.weight(2f),
                 leadingIcon = {
                     Icon(
                         painter = painterResource(Res.drawable.search_24dp),
@@ -142,7 +154,7 @@ fun TopBar(
                 placeholder = {
                     Text(
                         "Search for files",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                     )
                 },
                 singleLine = true,
@@ -155,13 +167,13 @@ fun TopBar(
                     unfocusedIndicatorColor = Color.Transparent, // removes underline when not focused
                     disabledIndicatorColor = Color.Transparent // removes underline when disabled
                 ),
-                textStyle = MaterialTheme.typography.titleLarge,
+                textStyle = MaterialTheme.typography.titleMedium,
             )
         }
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
         ) {
             IconButton(
                 onClick = {},
@@ -189,24 +201,24 @@ fun TopBar(
 }
 
 @Composable
-fun QuickAccess() {
+fun QuickAccess(
+    selectedFileFilter: FileType?,
+    selectFileFilter: (FileType?) -> Unit,
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             "Quick Access",
-            style = MaterialTheme.typography.headlineMedium.copy(
+            style = MaterialTheme.typography.titleLarge.copy(
                 fontWeight = FontWeight.SemiBold
             ),
         )
 
-        val filterItems = mutableMapOf(
-            "DOCX" to Res.drawable.doc,
-            "Excel" to Res.drawable.excel,
-            "PDF" to Res.drawable.pdf,
-            "PPT" to Res.drawable.powerpoint,
-            "Zip" to Res.drawable.zip_folder,
-        )
+        val ignoredFileTypes = listOf(FileType.UNKNOWN, FileType.FOLDER)
+        val items = FileType.entries
+            .filter { fileType -> fileType !in ignoredFileTypes }
+            .toList()
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -214,15 +226,21 @@ fun QuickAccess() {
             modifier = Modifier.fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
         ) {
-            var selectedFilter by remember { mutableStateOf("") }
+            items.forEach { fileType ->
+                val isSelected = selectedFileFilter == fileType
 
-            filterItems.forEach { (label, icon) ->
                 FilterItem(
-                    label = label,
-                    icon = icon,
-                    isSelected = selectedFilter == label,
+                    label = fileType.name,
+                    icon = fileType.icon,
+                    isSelected = isSelected,
                     onClick = {
-                        selectedFilter = label
+                        // If user clicks on an already selected item, we deselect it
+                        if (isSelected) {
+                            selectFileFilter(null)
+                            return@FilterItem
+                        }
+
+                        selectFileFilter(fileType)
                     },
                 )
             }
@@ -231,56 +249,153 @@ fun QuickAccess() {
 }
 
 @Composable
-fun MyFiles() {
+fun MyFiles(
+    files: List<DirEntry>,
+    sharedViewModel: SharedViewModel,
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        Text(
-            "My Files",
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.SemiBold
-            ),
-        )
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+                .padding(8.dp),
+        ) {
+            Text(
+                "My Files",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+            )
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(4),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
-        ){
-            items(count = dirEntries.size) { index ->
-                val dirEntry = dirEntries[index]
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(8.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = {
+                        sharedViewModel.gotoPreviousDir()
+                    },
                 ) {
-                    Image(
-                        painter = painterResource(getFileIcon(dirEntry.iconHint ?: "")),
+                    Icon(
+                        painter = painterResource(Res.drawable.chevron_left_24dp),
                         contentDescription = null,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(28.dp)
                     )
+                }
 
-                    Text(
-                        dirEntry.name,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
+                IconButton(
+                    onClick = {
+                        sharedViewModel.gotoNextDir()
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.chevron_right_24dp),
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp)
                     )
+                }
 
-                    Text(
-                        formatLastModified(dirEntry.lastModified),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-
-                    Text(
-                        formatFileSize(dirEntry.size),
-                        style = MaterialTheme.typography.titleMedium,
+                IconButton(
+                    onClick = {
+                        sharedViewModel.toggleHiddenFiles()
+                    },
+                ) {
+                    val resource = if (sharedViewModel.isShowingHiddenFiles) {
+                        Res.drawable.visibility_off_24dp
+                    } else {
+                        Res.drawable.visibility_24dp
+                    }
+                    Icon(
+                        painter = painterResource(resource),
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
+        }
+
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(148.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(count = files.size) { index ->
+                val file = files[index]
+                FileItem(
+                    file = file,
+                    onClick = {
+                        if (file.isDirectory) {
+                            sharedViewModel.changeWorkingDir(file.path)
+                        } else {
+                            openDocument(file)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FileItem(
+    file: DirEntry,
+    onClick: () -> Unit,
+) {
+    val localInteractionSource = remember { MutableInteractionSource() }
+    val isHovered by localInteractionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) {
+        MaterialTheme.colorScheme.surfaceContainer
+    } else {
+        MaterialTheme.colorScheme.background
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth()
+            .height(156.dp)
+            .clickable(
+                interactionSource = null,
+                indication = null,
+                onClick = onClick,
+            )
+            .hoverable(localInteractionSource)
+            .pointerHoverIcon(PointerIcon.Hand),
+        colors = CardDefaults.cardColors().copy(
+            containerColor = containerColor,
+            contentColor = MaterialTheme.colorScheme.scrim,
+        ),
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize()
+                .padding(vertical = 8.dp, horizontal = 16.dp),
+        ) {
+            Image(
+                painter = painterResource(file.fileType.icon),
+                contentDescription = null,
+                modifier = Modifier.size(48.dp)
+            )
+
+            Text(
+                file.name,
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                formatLastModified(file.lastModified),
+                style = MaterialTheme.typography.titleMedium,
+            )
+
+            Text(
+                formatFileSize(file.size),
+                style = MaterialTheme.typography.titleMedium,
+            )
         }
     }
 }
@@ -340,16 +455,18 @@ fun FilterItem(
             Image(
                 painter = painterResource(icon),
                 contentDescription = null,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(28.dp)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 label.uppercase(Locale.getDefault()),
-                style = MaterialTheme.typography.titleMedium.copy(
+                style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -391,7 +508,7 @@ fun HardDrive2(
             Image(
                 painter = painterResource(icon),
                 contentDescription = null,
-                modifier = Modifier.size(56.dp)
+                modifier = Modifier.size(48.dp)
             )
 
             Row(

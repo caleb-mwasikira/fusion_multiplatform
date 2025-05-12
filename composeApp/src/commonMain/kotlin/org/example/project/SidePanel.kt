@@ -50,6 +50,7 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 fun SidePanel(
     modifier: Modifier,
+    onUploadDirectory: () -> Unit,
 ) {
     Column(
         modifier = modifier,
@@ -109,7 +110,7 @@ fun SidePanel(
 //        PromoSection()
 
         ElevatedButton(
-            onClick = {},
+            onClick = onUploadDirectory,
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.elevatedButtonColors().copy(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -128,6 +129,7 @@ fun SidePanel(
                     painter = painterResource(Res.drawable.add_24dp),
                     contentDescription = "Upload New Folder",
                     modifier = Modifier.padding(4.dp)
+                        .size(24.dp)
                 )
 
                 Text(
@@ -212,10 +214,10 @@ fun MenuItem(
         ),
         modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
     ) {
-        Image(
+        Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(24.dp)
         )
 
         Spacer(modifier = Modifier.width(12.dp))

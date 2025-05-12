@@ -1,14 +1,19 @@
 package org.example.project.data
 
 import minio_multiplatform.composeapp.generated.resources.Res
+import minio_multiplatform.composeapp.generated.resources.audio_file
 import minio_multiplatform.composeapp.generated.resources.doc_file
+import minio_multiplatform.composeapp.generated.resources.excel_file
 import minio_multiplatform.composeapp.generated.resources.folder
 import minio_multiplatform.composeapp.generated.resources.image_file
 import minio_multiplatform.composeapp.generated.resources.pdf_file
+import minio_multiplatform.composeapp.generated.resources.ppt_file
+import minio_multiplatform.composeapp.generated.resources.text_file
 import minio_multiplatform.composeapp.generated.resources.unknown_file
-import minio_multiplatform.composeapp.generated.resources.vlc
+import minio_multiplatform.composeapp.generated.resources.video_file
 import minio_multiplatform.composeapp.generated.resources.zip_folder
 import org.jetbrains.compose.resources.DrawableResource
+import java.io.File
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.TimeZone
@@ -19,9 +24,9 @@ data class DirEntry(
     val isDirectory: Boolean,
     val size: Long = 0L,                    // File size in bytes
     val lastModified: Long = 0L,            // Epoch millis
-    val mimeType: String? = null,           // e.g. "image/png", "application/pdf"
     val permissions: FilePermissions = FilePermissions(),
-    val iconHint: String? = null            // e.g. "folder", "image", "pdf"
+    val fileType: FileType,
+    val mime: String
 )
 
 data class FilePermissions(
@@ -29,6 +34,54 @@ data class FilePermissions(
     val writable: Boolean = true,
     val executable: Boolean = false
 )
+
+fun File.toDirEntry(): DirEntry {
+    return DirEntry(
+        name = this.name,
+        path = this.path,
+        isDirectory = this.isDirectory,
+        size = this.length(),
+        lastModified = this.lastModified(),
+        permissions = FilePermissions(
+            readable = this.canRead(),
+            writable = this.canWrite(),
+            executable = this.canExecute()
+        ),
+        fileType = getFileType(isDirectory, this.extension),
+        mime = this.extension
+    )
+}
+
+enum class FileType(val icon: DrawableResource) {
+    IMAGE(Res.drawable.image_file),
+    VIDEO(Res.drawable.video_file),
+    AUDIO(Res.drawable.audio_file),
+    PDF(Res.drawable.pdf_file),
+    DOCUMENT(Res.drawable.doc_file),
+    POWERPOINT(Res.drawable.ppt_file),
+    EXCEL(Res.drawable.excel_file),
+    TEXT(Res.drawable.text_file),
+    FOLDER(Res.drawable.folder),
+    ZIP(Res.drawable.zip_folder),
+    UNKNOWN(Res.drawable.unknown_file)
+}
+
+fun getFileType(isDirectory: Boolean, extension: String): FileType {
+    if (isDirectory) return FileType.FOLDER
+
+    return when (extension.lowercase()) {
+        "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif", "svg", "ico", "heic" -> FileType.IMAGE
+        "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "3gp" -> FileType.VIDEO
+        "mp3", "wav", "aac", "flac", "ogg", "m4a", "mpeg" -> FileType.AUDIO
+        "pdf" -> FileType.PDF
+        "doc", "docx" -> FileType.DOCUMENT
+        "xls", "xlsx" -> FileType.EXCEL
+        "ppt", "pptx" -> FileType.POWERPOINT
+        "txt", "csv", "rtf", "odt" -> FileType.TEXT
+        "zip", "rar", "7z", "tar", "gz" -> FileType.ZIP
+        else -> FileType.UNKNOWN
+    }
+}
 
 fun formatLastModified(lastModified: Long): String {
     val zone = TimeZone.getDefault()
@@ -40,7 +93,7 @@ fun formatLastModified(lastModified: Long): String {
 fun formatFileSize(bytes: Long): String {
     if (bytes < 1024) return "$bytes B"
 
-    val units = arrayOf("KB", "MB", "GB", "TB")
+    val units = arrayOf("B", "KB", "MB", "GB", "TB")
     var size = bytes.toDouble()
     var unitIndex = 0
 
@@ -52,102 +105,7 @@ fun formatFileSize(bytes: Long): String {
     return String.format("%.2f %s", size, units[unitIndex])
 }
 
-fun getFileIcon(iconHint: String): DrawableResource {
-    return when (iconHint) {
-        "folder" -> Res.drawable.folder
-        "image" -> Res.drawable.image_file
-        "video" -> Res.drawable.vlc
-        "pdf" -> Res.drawable.pdf_file
-        "text" -> Res.drawable.doc_file
-        "zip" -> Res.drawable.zip_folder
-        else -> Res.drawable.unknown_file
-    }
-}
+expect fun openDocument(doc: DirEntry)
 
-val dirEntries = listOf(
-    DirEntry(
-        name = "Documents",
-        path = "/home/user/Documents",
-        isDirectory = true,
-        lastModified = 1714891200000,
-        iconHint = "folder"
-    ),
-    DirEntry(
-        name = "Music",
-        path = "/home/user/Music",
-        isDirectory = true,
-        lastModified = 1714791200000,
-        iconHint = "folder"
-    ),
-    DirEntry(
-        name = "photo.jpg",
-        path = "/home/user/Pictures/photo.jpg",
-        isDirectory = false,
-        size = 2_048_576,
-        lastModified = 1714888200000,
-        mimeType = "image/jpeg",
-        permissions = FilePermissions(readable = true, writable = true),
-        iconHint = "image"
-    ),
-    DirEntry(
-        name = "video.mp4",
-        path = "/home/user/Videos/video.mp4",
-        isDirectory = false,
-        size = 52_428_800,
-        lastModified = 1714880000000,
-        mimeType = "video/mp4",
-        permissions = FilePermissions(readable = true),
-        iconHint = "video"
-    ),
-    DirEntry(
-        name = "Resume.pdf",
-        path = "/home/user/Documents/Resume.pdf",
-        isDirectory = false,
-        size = 384_000,
-        lastModified = 1714870000000,
-        mimeType = "application/pdf",
-        iconHint = "pdf"
-    ),
-    DirEntry(
-        name = "Projects",
-        path = "/home/user/Projects",
-        isDirectory = true,
-        lastModified = 1714750000000,
-        iconHint = "folder"
-    ),
-    DirEntry(
-        name = "script.sh",
-        path = "/home/user/Projects/script.sh",
-        isDirectory = false,
-        size = 2048,
-        lastModified = 1714840000000,
-        mimeType = "text/x-shellscript",
-        permissions = FilePermissions(readable = true, writable = true, executable = true),
-        iconHint = "text"
-    ),
-    DirEntry(
-        name = "todo.txt",
-        path = "/home/user/todo.txt",
-        isDirectory = false,
-        size = 1024,
-        lastModified = 1714830000000,
-        mimeType = "text/plain",
-        iconHint = "text"
-    ),
-    DirEntry(
-        name = "Archive.zip",
-        path = "/home/user/Downloads/Archive.zip",
-        isDirectory = false,
-        size = 10_485_760,
-        lastModified = 1714800000000,
-        mimeType = "application/zip",
-        iconHint = "zip"
-    ),
-    DirEntry(
-        name = "Notes",
-        path = "/home/user/Notes",
-        isDirectory = true,
-        lastModified = 1714700000000,
-        iconHint = "folder"
-    )
-)
+// List all files and folders in a given path
+expect fun listDirEntries(path: String): List<DirEntry>
