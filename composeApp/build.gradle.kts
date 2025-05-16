@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    kotlin("plugin.serialization") version "2.1.21"
 }
 
 kotlin {
@@ -18,7 +19,7 @@ kotlin {
     }
     
     jvm("desktop")
-    
+
     sourceSets {
         val desktopMain by getting
         
@@ -37,6 +38,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
 
             implementation("androidx.compose:compose-bom:2025.02.00")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)

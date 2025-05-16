@@ -93,8 +93,6 @@ fun MainPanel(
             )
         }
 
-        val files by sharedViewModel.files.collectAsState()
-
         QuickAccess(
             selectedFileFilter = sharedViewModel.selectedFileFilter,
             selectFileFilter = { filter ->
@@ -102,10 +100,7 @@ fun MainPanel(
             }
         )
 
-        MyFiles(
-            files = files,
-            sharedViewModel = sharedViewModel,
-        )
+        MyFiles(sharedViewModel = sharedViewModel)
     }
 }
 
@@ -250,7 +245,6 @@ fun QuickAccess(
 
 @Composable
 fun MyFiles(
-    files: List<DirEntry>,
     sharedViewModel: SharedViewModel,
 ) {
     Column(
@@ -303,10 +297,10 @@ fun MyFiles(
                         sharedViewModel.toggleHiddenFiles()
                     },
                 ) {
-                    val resource = if (sharedViewModel.isShowingHiddenFiles) {
-                        Res.drawable.visibility_off_24dp
-                    } else {
+                    val resource = if (sharedViewModel.hidingHiddenFiles) {
                         Res.drawable.visibility_24dp
+                    } else {
+                        Res.drawable.visibility_off_24dp
                     }
                     Icon(
                         painter = painterResource(resource),
@@ -317,6 +311,8 @@ fun MyFiles(
             }
         }
 
+        val files by sharedViewModel.files.collectAsState()
+
         LazyVerticalGrid(
             columns = GridCells.Adaptive(148.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -324,10 +320,9 @@ fun MyFiles(
             modifier = Modifier.fillMaxSize()
         ) {
             items(count = files.size) { index ->
-                val file = files[index]
                 FileItem(
-                    file = file,
-                    onClick = {
+                    file = files[index],
+                    onClick = { file ->
                         if (file.isDirectory) {
                             sharedViewModel.changeWorkingDir(file.path)
                         } else {
@@ -343,7 +338,7 @@ fun MyFiles(
 @Composable
 fun FileItem(
     file: DirEntry,
-    onClick: () -> Unit,
+    onClick: (DirEntry) -> Unit,
 ) {
     val localInteractionSource = remember { MutableInteractionSource() }
     val isHovered by localInteractionSource.collectIsHoveredAsState()
@@ -359,7 +354,9 @@ fun FileItem(
             .clickable(
                 interactionSource = null,
                 indication = null,
-                onClick = onClick,
+                onClick = {
+                    onClick(file)
+                },
             )
             .hoverable(localInteractionSource)
             .pointerHoverIcon(PointerIcon.Hand),

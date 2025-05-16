@@ -1,32 +1,30 @@
 package org.example.project.data
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
+import org.example.project.ContextProvider
 import org.example.project.MainActivity.Companion.TAG
 
-private lateinit var applicationContext: Context
-
-fun setApplicationContext(context: Context) {
-    applicationContext = context
-}
-
 actual fun listDirEntries(path: String): List<DirEntry> {
-    if (!::applicationContext.isInitialized) {
-        Log.e(
-            TAG,
-            "Context is not initialized. Remember to call setApplicationContext() in MainActivity first."
-        )
-        return emptyList()
-    }
-
     try {
-        val treeUri = Uri.parse(path)
-        val documentId = DocumentsContract.getTreeDocumentId(treeUri)
-        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, documentId)
+        val parentUri = Uri.parse(path)
+        val parentId = when {
+            parentUri.path?.contains("/document/") == true -> {
+                DocumentsContract.getDocumentId(parentUri)
+            }
 
+            parentUri.path?.contains("/tree/") == true -> {
+                DocumentsContract.getTreeDocumentId(parentUri)
+            }
+
+            else -> {
+                throw IllegalArgumentException("Invalid URI: $parentUri")
+            }
+        }
+
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(parentUri, parentId)
         val projection = arrayOf(
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
@@ -36,7 +34,7 @@ actual fun listDirEntries(path: String): List<DirEntry> {
         )
 
         val dirEntries = mutableListOf<DirEntry>()
-        val context = applicationContext
+        val context = ContextProvider.get()
         val cursor = context.contentResolver.query(childrenUri, projection, null, null, null)
         cursor?.use {
             while (it.moveToNext()) {
@@ -48,11 +46,12 @@ actual fun listDirEntries(path: String): List<DirEntry> {
 
                 val isDirectory = mime == DocumentsContract.Document.MIME_TYPE_DIR
                 val extension = mime.substringAfterLast("/")
-                val uri = DocumentsContract.buildDocumentUriUsingTree(treeUri, childDocumentId)
+                val childUri =
+                    DocumentsContract.buildDocumentUriUsingTree(parentUri, childDocumentId)
 
                 val dirEntry = DirEntry(
                     name = name,
-                    path = uri.toString(),
+                    path = childUri.toString(),
                     isDirectory = isDirectory,
                     size = size.toLongOrNull() ?: 0L,
                     lastModified = lastModified.toLongOrNull() ?: 0L,
@@ -71,21 +70,15 @@ actual fun listDirEntries(path: String): List<DirEntry> {
 }
 
 actual fun openDocument(doc: DirEntry) {
-    if (!::applicationContext.isInitialized) {
-        Log.e(
-            TAG,
-            "Context is not initialized. Remember to call setApplicationContext() in MainActivity first."
-        )
-        return
-    }
-    val context = applicationContext
+    val context = ContextProvider.get()
     val uri = Uri.parse(doc.path)
     val intent = Intent(Intent.ACTION_VIEW).apply {
         setDataAndTypeAndNormalize(uri, doc.mime)
         addFlags(
             Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                    Intent.FLAG_ACTIVITY_NEW_TASK // Calling startActivity() from outside an Activity requires this flag
         )
     }
 

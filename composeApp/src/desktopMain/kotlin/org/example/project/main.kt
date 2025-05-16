@@ -6,9 +6,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import org.example.project.data.CustomPreferences
 import org.example.project.data.SharedViewModel
+import org.example.project.data.WORKING_DIR
 import javax.swing.JFileChooser
 import javax.swing.JFrame
+
+fun selectDirectory(): String? {
+    val frame = JFrame()
+    frame.isAlwaysOnTop = true
+
+    val chooser = JFileChooser().apply {
+        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+        dialogTitle = "Select Folder"
+    }
+
+    val result = chooser.showOpenDialog(frame)
+    return if (result == JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFile.path
+    } else {
+        null
+    }
+}
 
 fun main() = application {
     val windowState = rememberWindowState(
@@ -21,7 +40,8 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "MinIo",
     ) {
-        val sharedViewModel = remember { SharedViewModel() }
+        val savedWorkingDir = remember { CustomPreferences.getString(WORKING_DIR) }
+        val sharedViewModel = remember { SharedViewModel(savedWorkingDir) }
 
         App(
             windowSizeClass = getWindowSizeClass(
@@ -29,24 +49,10 @@ fun main() = application {
             ),
             sharedViewModel = sharedViewModel,
             onUploadDirectory = {
-                val frame = JFrame()
-                frame.isAlwaysOnTop = true
-
-                val chooser = JFileChooser().apply {
-                    fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                    dialogTitle = "Select Folder"
-                }
-
-                val result = chooser.showOpenDialog(frame)
-                val selected = if (result == JFileChooser.APPROVE_OPTION) {
-                    chooser.selectedFile.path
-                } else {
-                    null
-                }
-
+                val selected = selectDirectory()
                 selected?.let {
-                    println("Selected folder; $it")
                     sharedViewModel.changeWorkingDir(it)
+                    CustomPreferences.putString(WORKING_DIR, it)
                 }
             }
         )
