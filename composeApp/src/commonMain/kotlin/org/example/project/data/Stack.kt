@@ -1,19 +1,38 @@
 package org.example.project.data
 
+
 class Stack<T: Any> {
     private val items = mutableListOf<T>()
 
-    fun push(item: T?) {
-        item?.let {
-            items.add(item)
+    fun pushMany(vararg newItems: T): UInt {
+        var numInserted = 0u
+        for(newItem in newItems) {
+            val result = push(newItem)
+            if(!result) {
+                println("Error pushing new item to stack")
+                break
+            }
+            numInserted++
         }
+        return numInserted
+    }
+
+    fun push(newItem: T?): Boolean {
+        newItem?.let {
+            return items.add(newItem)
+        }
+        return false
     }
 
     fun pop(): T? {
         return items.removeLastOrNull()
     }
 
-    fun peek(): T? {
-        return items.lastOrNull()
+    fun isEmpty(): Boolean {
+        return items.isEmpty()
+    }
+
+    fun clear() {
+        return items.clear()
     }
 }

@@ -40,6 +40,9 @@ kotlin {
             implementation("androidx.compose:compose-bom:2025.02.00")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
         }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)

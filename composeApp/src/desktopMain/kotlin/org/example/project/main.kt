@@ -6,25 +6,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import org.example.project.data.CustomPreferences
 import org.example.project.data.SharedViewModel
-import org.example.project.data.WORKING_DIR
 import javax.swing.JFileChooser
 import javax.swing.JFrame
 
 fun selectDirectory(): String? {
-    val frame = JFrame()
-    frame.isAlwaysOnTop = true
+    return try {
+        val frame = JFrame()
+        frame.isAlwaysOnTop = true
 
-    val chooser = JFileChooser().apply {
-        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-        dialogTitle = "Select Folder"
-    }
+        val chooser = JFileChooser().apply {
+            fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+            dialogTitle = "Select Folder"
+        }
 
-    val result = chooser.showOpenDialog(frame)
-    return if (result == JFileChooser.APPROVE_OPTION) {
-        chooser.selectedFile.path
-    } else {
+        val result = chooser.showOpenDialog(frame)
+        return if (result == JFileChooser.APPROVE_OPTION) {
+            chooser.selectedFile.path
+        } else {
+            null
+        }
+    } catch (e: Exception) {
+        println("Error selecting dir; ${e.message}")
         null
     }
 }
@@ -40,8 +43,7 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "MinIo",
     ) {
-        val savedWorkingDir = remember { CustomPreferences.getString(WORKING_DIR) }
-        val sharedViewModel = remember { SharedViewModel(savedWorkingDir) }
+        val sharedViewModel = remember { SharedViewModel() }
 
         App(
             windowSizeClass = getWindowSizeClass(
@@ -51,8 +53,7 @@ fun main() = application {
             onUploadDirectory = {
                 val selected = selectDirectory()
                 selected?.let {
-                    sharedViewModel.changeWorkingDir(it)
-                    CustomPreferences.putString(WORKING_DIR, it)
+                    sharedViewModel.trackNewDir(it)
                 }
             }
         )

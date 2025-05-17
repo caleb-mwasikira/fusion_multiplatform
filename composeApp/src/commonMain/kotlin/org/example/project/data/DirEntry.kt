@@ -1,5 +1,12 @@
 package org.example.project.data
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import minio_multiplatform.composeapp.generated.resources.Res
 import minio_multiplatform.composeapp.generated.resources.audio_file
 import minio_multiplatform.composeapp.generated.resources.doc_file
@@ -35,6 +42,16 @@ data class FilePermissions(
     val executable: Boolean = false
 )
 
+/**
+ * Captures the path and lastModified fields of a DirEntry
+ */
+fun DirEntry.takeSnapshot(): FileSnapshot {
+    return FileSnapshot(
+        path = this.path,
+        lastModified = this.lastModified,
+    )
+}
+
 fun File.toDirEntry(): DirEntry {
     return DirEntry(
         name = this.name,
@@ -50,6 +67,10 @@ fun File.toDirEntry(): DirEntry {
         fileType = getFileType(isDirectory, this.extension),
         mime = this.extension
     )
+}
+
+fun String.isHiddenFile(): Boolean {
+    return this.firstOrNull()?.equals('.') ?: false
 }
 
 enum class FileType(val icon: DrawableResource) {
@@ -105,7 +126,56 @@ fun formatFileSize(bytes: Long): String {
     return String.format("%.2f %s", size, units[unitIndex])
 }
 
+/**
+ * Captures the names and lastModified timestamps of all files
+ * within a directory
+ */
+suspend fun takeDirSnapshot(path: String): List<FileSnapshot> = withContext(Dispatchers.IO) {
+    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    val fileChannel = Channel<DirEntry>()
+
+    // Coroutine to generate dir entry files
+    scope.launch {
+        val stack = Stack<DirEntry>()
+        val children = listDirEntries(path)
+        stack.pushMany(*children.toTypedArray())
+
+        while (!stack.isEmpty()) {
+            val child =
+                stack.pop() ?: throw IllegalStateException("Stack isEmpty() function is broken")
+            if (child.isDirectory) {
+                val moreChildren = listDirEntries(child.path)
+                stack.pushMany(*moreChildren.toTypedArray())
+                continue
+            }
+            fileChannel.send(child)
+        }
+        fileChannel.close()
+    }
+
+    // Consume dir entry files from channel
+    val resultsDeferred = scope.async {
+        val results = mutableListOf<FileSnapshot>()
+
+        for (file in fileChannel) {
+            val snapshot = file.takeSnapshot()
+            results.add(snapshot)
+        }
+        results
+    }
+    resultsDeferred.await()
+}
+
+expect fun getDirEntry(path: String): DirEntry?
+
+expect fun createNewFile(filename: String): File?
+
+/**
+ * Opens a document for viewing within the running platform
+ */
 expect fun openDocument(doc: DirEntry)
 
-// List all files and folders in a given path
-expect fun listDirEntries(path: String): List<DirEntry>
+/**
+ * List all files and folders in a given path
+ */
+expect fun listDirEntries(path: String, ignoreHiddenFiles: Boolean = true): List<DirEntry>

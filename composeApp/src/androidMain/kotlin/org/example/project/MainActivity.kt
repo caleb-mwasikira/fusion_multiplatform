@@ -2,15 +2,12 @@ package org.example.project
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import org.example.project.data.CustomPreferences
 import org.example.project.data.SharedViewModel
-import org.example.project.data.WORKING_DIR
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -21,8 +18,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         ContextProvider.init(this)
-        val savedWorkingDir = CustomPreferences.getString(WORKING_DIR)
-        val sharedViewModel = SharedViewModel(savedWorkingDir)
+        val sharedViewModel = SharedViewModel()
 
         val selectDirectoryLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -35,10 +31,7 @@ class MainActivity : ComponentActivity() {
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                     )
-
-                    Log.d(TAG, "Selected folder: $uri")
-                    sharedViewModel.changeWorkingDir(uri.toString())
-                    CustomPreferences.putString(WORKING_DIR, uri.toString())
+                    sharedViewModel.trackNewDir(uri.toString())
                 }
             }
         }
@@ -56,7 +49,6 @@ class MainActivity : ComponentActivity() {
                                     Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
                         )
                     }
-
                     selectDirectoryLauncher.launch(intent)
                 }
             )

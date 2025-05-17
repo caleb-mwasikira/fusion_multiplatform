@@ -93,8 +93,9 @@ fun MainPanel(
             )
         }
 
+        val selectedFileFilter by sharedViewModel.selectedFileFilter.collectAsState()
         QuickAccess(
-            selectedFileFilter = sharedViewModel.selectedFileFilter,
+            selectedFileFilter = selectedFileFilter,
             selectFileFilter = { filter ->
                 sharedViewModel.selectFileFilter(filter)
             }
@@ -297,7 +298,8 @@ fun MyFiles(
                         sharedViewModel.toggleHiddenFiles()
                     },
                 ) {
-                    val resource = if (sharedViewModel.hidingHiddenFiles) {
+                    val hidingHiddenFiles by sharedViewModel.hidingHiddenFiles.collectAsState()
+                    val resource = if (hidingHiddenFiles) {
                         Res.drawable.visibility_24dp
                     } else {
                         Res.drawable.visibility_off_24dp
