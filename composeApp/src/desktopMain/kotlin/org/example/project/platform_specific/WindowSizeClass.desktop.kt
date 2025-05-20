@@ -1,4 +1,4 @@
-package org.example.project
+package org.example.project.platform_specific
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalDensity

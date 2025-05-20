@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -52,12 +50,9 @@ import minio_multiplatform.composeapp.generated.resources.person_24dp
 import minio_multiplatform.composeapp.generated.resources.search_24dp
 import minio_multiplatform.composeapp.generated.resources.visibility_24dp
 import minio_multiplatform.composeapp.generated.resources.visibility_off_24dp
-import org.example.project.data.DirEntry
 import org.example.project.data.FileType
 import org.example.project.data.SharedViewModel
-import org.example.project.data.formatFileSize
-import org.example.project.data.formatLastModified
-import org.example.project.data.openDocument
+import org.example.project.platform_specific.FilesGrid
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import java.util.Locale
@@ -101,7 +96,21 @@ fun MainPanel(
             }
         )
 
-        MyFiles(sharedViewModel = sharedViewModel)
+        // MyFiles
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            FilesActionBar(sharedViewModel)
+
+            val files by sharedViewModel.files.collectAsState()
+            FilesGrid(
+                files = files,
+                changeWorkingDir = { path ->
+                    sharedViewModel.changeWorkingDir(path)
+                }
+            )
+        }
     }
 }
 
@@ -245,156 +254,67 @@ fun QuickAccess(
 }
 
 @Composable
-fun MyFiles(
+fun FilesActionBar(
     sharedViewModel: SharedViewModel,
 ) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize()
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+            .padding(8.dp),
     ) {
+        Text(
+            "My Files",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
+        )
+
         Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "My Files",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            IconButton(
+                onClick = {
+                    sharedViewModel.gotoPreviousDir()
+                },
             ) {
-                IconButton(
-                    onClick = {
-                        sharedViewModel.gotoPreviousDir()
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.chevron_left_24dp),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-
-                IconButton(
-                    onClick = {
-                        sharedViewModel.gotoNextDir()
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.chevron_right_24dp),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-
-                IconButton(
-                    onClick = {
-                        sharedViewModel.toggleHiddenFiles()
-                    },
-                ) {
-                    val hidingHiddenFiles by sharedViewModel.hidingHiddenFiles.collectAsState()
-                    val resource = if (hidingHiddenFiles) {
-                        Res.drawable.visibility_24dp
-                    } else {
-                        Res.drawable.visibility_off_24dp
-                    }
-                    Icon(
-                        painter = painterResource(resource),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
-        }
-
-        val files by sharedViewModel.files.collectAsState()
-
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(148.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(count = files.size) { index ->
-                FileItem(
-                    file = files[index],
-                    onClick = { file ->
-                        if (file.isDirectory) {
-                            sharedViewModel.changeWorkingDir(file.path)
-                        } else {
-                            openDocument(file)
-                        }
-                    }
+                Icon(
+                    painter = painterResource(Res.drawable.chevron_left_24dp),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp)
                 )
             }
-        }
-    }
-}
 
-@Composable
-fun FileItem(
-    file: DirEntry,
-    onClick: (DirEntry) -> Unit,
-) {
-    val localInteractionSource = remember { MutableInteractionSource() }
-    val isHovered by localInteractionSource.collectIsHoveredAsState()
-    val containerColor = if (isHovered) {
-        MaterialTheme.colorScheme.surfaceContainer
-    } else {
-        MaterialTheme.colorScheme.background
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth()
-            .height(156.dp)
-            .clickable(
-                interactionSource = null,
-                indication = null,
+            IconButton(
                 onClick = {
-                    onClick(file)
+                    sharedViewModel.gotoNextDir()
                 },
-            )
-            .hoverable(localInteractionSource)
-            .pointerHoverIcon(PointerIcon.Hand),
-        colors = CardDefaults.cardColors().copy(
-            containerColor = containerColor,
-            contentColor = MaterialTheme.colorScheme.scrim,
-        ),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxSize()
-                .padding(vertical = 8.dp, horizontal = 16.dp),
-        ) {
-            Image(
-                painter = painterResource(file.fileType.icon),
-                contentDescription = null,
-                modifier = Modifier.size(48.dp)
-            )
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.chevron_right_24dp),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
 
-            Text(
-                file.name,
-                style = MaterialTheme.typography.titleLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                formatLastModified(file.lastModified),
-                style = MaterialTheme.typography.titleMedium,
-            )
-
-            Text(
-                formatFileSize(file.size),
-                style = MaterialTheme.typography.titleMedium,
-            )
+            IconButton(
+                onClick = {
+                    sharedViewModel.toggleHiddenFiles()
+                },
+            ) {
+                val hidingHiddenFiles by sharedViewModel.hidingHiddenFiles.collectAsState()
+                val resource = if (hidingHiddenFiles) {
+                    Res.drawable.visibility_24dp
+                } else {
+                    Res.drawable.visibility_off_24dp
+                }
+                Icon(
+                    painter = painterResource(resource),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }

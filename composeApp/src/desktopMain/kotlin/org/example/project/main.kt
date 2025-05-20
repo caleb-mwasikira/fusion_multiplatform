@@ -7,6 +7,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import org.example.project.data.SharedViewModel
+import org.example.project.platform_specific.getWindowSizeClass
 import javax.swing.JFileChooser
 import javax.swing.JFrame
 

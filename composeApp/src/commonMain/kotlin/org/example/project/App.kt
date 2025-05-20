@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -19,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.example.project.data.SharedViewModel
+import org.example.project.platform_specific.WindowSizeClass
 import org.example.project.theme.AppTheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MobileScreen(
     sharedViewModel: SharedViewModel,
@@ -55,12 +58,12 @@ fun MobileScreen(
                 modifier = Modifier.fillMaxSize()
                     .padding(innerPadding)
                     .padding(24.dp),
+                sharedViewModel = sharedViewModel,
                 onOpenDrawer = {
                     scope.launch {
                         if (drawerState.isOpen) drawerState.close() else drawerState.open()
                     }
                 },
-                sharedViewModel = sharedViewModel,
             )
         }
     }
