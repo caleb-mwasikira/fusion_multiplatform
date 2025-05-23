@@ -1,30 +1,10 @@
 package org.example.project.data
 
-import java.awt.Desktop
 import java.io.File
-import kotlin.io.path.Path
-
-actual fun openDocument(doc: DirEntry) {
-    val file = File(doc.path)
-    if (!file.exists()) {
-        println("File ${doc.path} not found")
-        return
-    }
-
-    if (!Desktop.isDesktopSupported()) {
-        println("Desktop not supported")
-        return
-    }
-
-    val desktop = Desktop.getDesktop()
-    try {
-        desktop.open(file)
-    } catch (e: Exception) {
-        println("Error opening file; ${e.message}")
-    }
-}
 
 actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEntry> {
+    println("Listing dir entries in $path. Ignore hidden files? $ignoreHiddenFiles")
+
     val file = File(path)
     if (!file.exists()) {
         println("File $path does not exist")
@@ -42,20 +22,6 @@ actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEnt
 
     val children = file.listFiles()?.toList() ?: emptyList()
     return children.map { child -> child.toDirEntry() }
-}
-
-actual fun createNewFile(filename: String): File? {
-    return try {
-        val path = Path(System.getProperty("user.home"), ".minio", filename)
-        val file = path.toFile()
-        if (!file.exists()) {
-            file.createNewFile()
-        }
-        file
-    } catch (e: Exception) {
-        println("Error creating new internal file; ${e.message}")
-        null
-    }
 }
 
 actual fun getDirEntry(path: String): DirEntry? {

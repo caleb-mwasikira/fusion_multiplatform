@@ -52,7 +52,7 @@ import minio_multiplatform.composeapp.generated.resources.visibility_24dp
 import minio_multiplatform.composeapp.generated.resources.visibility_off_24dp
 import org.example.project.data.FileType
 import org.example.project.data.SharedViewModel
-import org.example.project.platform_specific.FilesGrid
+import org.example.project.widgets.FilesGrid
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import java.util.Locale
@@ -103,12 +103,8 @@ fun MainPanel(
         ) {
             FilesActionBar(sharedViewModel)
 
-            val files by sharedViewModel.files.collectAsState()
             FilesGrid(
-                files = files,
-                changeWorkingDir = { path ->
-                    sharedViewModel.changeWorkingDir(path)
-                }
+                sharedViewModel = sharedViewModel
             )
         }
     }

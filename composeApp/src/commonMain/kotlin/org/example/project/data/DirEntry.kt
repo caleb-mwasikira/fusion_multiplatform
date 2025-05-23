@@ -21,14 +21,12 @@ import minio_multiplatform.composeapp.generated.resources.video_file
 import minio_multiplatform.composeapp.generated.resources.zip_folder
 import org.jetbrains.compose.resources.DrawableResource
 import java.io.File
-import java.time.Instant
-import java.time.LocalDateTime
-import java.util.TimeZone
 
 data class DirEntry(
     val name: String,
     val path: String,
     val isDirectory: Boolean,
+    val isFile: Boolean = !isDirectory,
     val size: Long = 0L,                    // File size in bytes
     val lastModified: Long = 0L,            // Epoch millis
     val permissions: FilePermissions = FilePermissions(),
@@ -104,28 +102,6 @@ fun getFileType(isDirectory: Boolean, extension: String): FileType {
     }
 }
 
-fun formatLastModified(lastModified: Long): String {
-    val zone = TimeZone.getDefault()
-    val dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastModified), zone.toZoneId())
-    val formattedDate = dateTime.toString().substringBefore("T")
-    return formattedDate
-}
-
-fun formatFileSize(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-
-    val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    var size = bytes.toDouble()
-    var unitIndex = 0
-
-    while (size >= 1024 && unitIndex < units.lastIndex) {
-        size /= 1024
-        unitIndex++
-    }
-
-    return String.format("%.2f %s", size, units[unitIndex])
-}
-
 /**
  * Captures the names and lastModified timestamps of all files
  * within a directory
@@ -167,13 +143,6 @@ suspend fun takeDirSnapshot(path: String): List<FileSnapshot> = withContext(Disp
 }
 
 expect fun getDirEntry(path: String): DirEntry?
-
-expect fun createNewFile(filename: String): File?
-
-/**
- * Opens a document for viewing within the running platform
- */
-expect fun openDocument(doc: DirEntry)
 
 /**
  * List all files and folders in a given path

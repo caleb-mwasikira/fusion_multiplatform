@@ -1,14 +1,14 @@
 package org.example.project.data
 
 
-class Stack<T: Any> {
+class Stack<T : Any> {
     private val items = mutableListOf<T>()
 
     fun pushMany(vararg newItems: T): UInt {
         var numInserted = 0u
-        for(newItem in newItems) {
+        for (newItem in newItems) {
             val result = push(newItem)
-            if(!result) {
+            if (!result) {
                 println("Error pushing new item to stack")
                 break
             }

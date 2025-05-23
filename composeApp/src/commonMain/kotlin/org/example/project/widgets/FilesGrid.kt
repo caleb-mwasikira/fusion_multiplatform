@@ -1,4 +1,4 @@
-package org.example.project.platform_specific
+package org.example.project.widgets
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -7,7 +7,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -25,12 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.example.project.data.DirEntry
+import org.example.project.data.SharedViewModel
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
 expect fun FilesGrid(
-    files: List<DirEntry>,
-    changeWorkingDir: (String) -> Unit,
+    sharedViewModel: SharedViewModel,
 )
 
 @Composable
@@ -38,7 +37,6 @@ fun FileItemCard(
     file: DirEntry,
     modifier: Modifier,
     isSelected: Boolean = false,
-    content: @Composable (BoxScope.() -> Unit),
 ) {
     val localInteractionSource = remember { MutableInteractionSource() }
     val isHovered by localInteractionSource.collectIsHoveredAsState()
@@ -88,12 +86,6 @@ fun FileItemCard(
                         .padding(vertical = 4.dp, horizontal = 8.dp)
                 )
             }
-        }
-
-        Box(
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) {
-            content()
         }
     }
 }

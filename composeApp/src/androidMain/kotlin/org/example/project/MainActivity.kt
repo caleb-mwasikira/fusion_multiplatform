@@ -8,7 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import org.example.project.data.SharedViewModel
-import org.example.project.platform_specific.getWindowSizeClass
+import org.example.project.widgets.getWindowSizeClass
 
 class MainActivity : ComponentActivity() {
     companion object {

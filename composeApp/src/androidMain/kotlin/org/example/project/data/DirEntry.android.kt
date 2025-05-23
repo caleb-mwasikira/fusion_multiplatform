@@ -1,33 +1,10 @@
 package org.example.project.data
 
-import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
 import org.example.project.ContextProvider
-import org.example.project.MainActivity.Companion.TAG
-import java.io.File
-
-actual fun openDocument(doc: DirEntry) {
-    val context = ContextProvider.get()
-    val uri = Uri.parse(doc.path)
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndTypeAndNormalize(uri, doc.mime)
-        addFlags(
-            Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
-                    Intent.FLAG_ACTIVITY_NEW_TASK // Calling startActivity() from outside an Activity requires this flag
-        )
-    }
-
-    Log.d(TAG, "Opening file ${doc.path}. MIME type; ${doc.mime}")
-    try {
-        context.startActivity(intent)
-    } catch (e: Exception) {
-        Log.e(TAG, "Error opening file; ${e.message}")
-    }
-}
+import org.example.project.MainActivity
 
 actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEntry> {
     try {
@@ -91,27 +68,12 @@ actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEnt
         }
         return dirEntries
     } catch (e: Exception) {
-        Log.e(TAG, "Error listing directory entries in $path; ${e.message}")
+        Log.e(MainActivity.TAG, "Error listing directory entries in $path; ${e.message}")
         return emptyList()
     }
 }
 
-actual fun createNewFile(filename: String): File? {
-    return try {
-        val context = ContextProvider.get()
-        val file = File(context.filesDir, filename)
-        if (!file.exists()) {
-            file.createNewFile()
-        }
-        file
-
-    } catch (e: Exception) {
-        println("Error creating new internal file; ${e.message}")
-        null
-    }
-}
-
-actual fun getDirEntry(path: String): DirEntry? {
+fun getDocumentUri(path: String): Uri? {
     return try {
         val parentUri = Uri.parse(path)
         val parentId = when {
@@ -124,11 +86,18 @@ actual fun getDirEntry(path: String): DirEntry? {
             }
 
             else -> {
-                throw IllegalArgumentException("Invalid URI: $parentUri")
+                return null
             }
         }
-        val uri = DocumentsContract.buildDocumentUriUsingTree(parentUri, parentId)
+        DocumentsContract.buildDocumentUriUsingTree(parentUri, parentId)
+    } catch (e: Exception) {
+        null
+    }
+}
 
+actual fun getDirEntry(path: String): DirEntry? {
+    return try {
+        val uri = getDocumentUri(path) ?: throw IllegalArgumentException("Invalid URI: $path")
         val projection = arrayOf(
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
             DocumentsContract.Document.COLUMN_MIME_TYPE,
@@ -164,7 +133,7 @@ actual fun getDirEntry(path: String): DirEntry? {
         dirEntry
 
     } catch (e: Exception) {
-        println("Error getting file; ${e.message}")
+        Log.e(MainActivity.TAG, "Error converting path into DirEntry; ${e.message}")
         null
     }
 }

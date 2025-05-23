@@ -1,4 +1,4 @@
-package org.example.project.platform_specific
+package org.example.project.widgets
 
 import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
