@@ -1,25 +1,5 @@
 package org.example.project.data
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import minio_multiplatform.composeapp.generated.resources.Res
-import minio_multiplatform.composeapp.generated.resources.audio_file
-import minio_multiplatform.composeapp.generated.resources.doc_file
-import minio_multiplatform.composeapp.generated.resources.excel_file
-import minio_multiplatform.composeapp.generated.resources.folder
-import minio_multiplatform.composeapp.generated.resources.image_file
-import minio_multiplatform.composeapp.generated.resources.pdf_file
-import minio_multiplatform.composeapp.generated.resources.ppt_file
-import minio_multiplatform.composeapp.generated.resources.text_file
-import minio_multiplatform.composeapp.generated.resources.unknown_file
-import minio_multiplatform.composeapp.generated.resources.video_file
-import minio_multiplatform.composeapp.generated.resources.zip_folder
-import org.jetbrains.compose.resources.DrawableResource
 import java.io.File
 
 data class DirEntry(
@@ -40,16 +20,6 @@ data class FilePermissions(
     val executable: Boolean = false
 )
 
-/**
- * Captures the path and lastModified fields of a DirEntry
- */
-fun DirEntry.takeSnapshot(): FileSnapshot {
-    return FileSnapshot(
-        path = this.path,
-        lastModified = this.lastModified,
-    )
-}
-
 fun File.toDirEntry(): DirEntry {
     return DirEntry(
         name = this.name,
@@ -69,77 +39,6 @@ fun File.toDirEntry(): DirEntry {
 
 fun String.isHiddenFile(): Boolean {
     return this.firstOrNull()?.equals('.') ?: false
-}
-
-enum class FileType(val icon: DrawableResource) {
-    IMAGE(Res.drawable.image_file),
-    VIDEO(Res.drawable.video_file),
-    AUDIO(Res.drawable.audio_file),
-    PDF(Res.drawable.pdf_file),
-    DOCUMENT(Res.drawable.doc_file),
-    POWERPOINT(Res.drawable.ppt_file),
-    EXCEL(Res.drawable.excel_file),
-    TEXT(Res.drawable.text_file),
-    FOLDER(Res.drawable.folder),
-    ZIP(Res.drawable.zip_folder),
-    UNKNOWN(Res.drawable.unknown_file)
-}
-
-fun getFileType(isDirectory: Boolean, extension: String): FileType {
-    if (isDirectory) return FileType.FOLDER
-
-    return when (extension.lowercase()) {
-        "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif", "svg", "ico", "heic" -> FileType.IMAGE
-        "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "3gp" -> FileType.VIDEO
-        "mp3", "wav", "aac", "flac", "ogg", "m4a", "mpeg" -> FileType.AUDIO
-        "pdf" -> FileType.PDF
-        "doc", "docx" -> FileType.DOCUMENT
-        "xls", "xlsx" -> FileType.EXCEL
-        "ppt", "pptx" -> FileType.POWERPOINT
-        "txt", "csv", "rtf", "odt" -> FileType.TEXT
-        "zip", "rar", "7z", "tar", "gz" -> FileType.ZIP
-        else -> FileType.UNKNOWN
-    }
-}
-
-/**
- * Captures the names and lastModified timestamps of all files
- * within a directory
- */
-suspend fun takeDirSnapshot(path: String): List<FileSnapshot> = withContext(Dispatchers.IO) {
-    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    val fileChannel = Channel<DirEntry>()
-
-    // Coroutine to generate dir entry files
-    scope.launch {
-        val stack = Stack<DirEntry>()
-        var children = listDirEntries(path)
-        stack.pushMany(*children.toTypedArray())
-
-        while (stack.isNotEmpty()) {
-            val child =
-                stack.pop() ?: throw IllegalStateException("Stack isNotEmpty() function is broken")
-            if (child.isDirectory) {
-                children = listDirEntries(child.path)
-                stack.pushMany(*children.toTypedArray())
-                continue
-            }
-            fileChannel.send(child)
-        }
-        fileChannel.close()
-    }
-
-    // Consume dir entry files from channel
-    val resultsDeferred = scope.async {
-        val results = mutableListOf<FileSnapshot>()
-
-        for (file in fileChannel) {
-            val snapshot = file.takeSnapshot()
-            results.add(snapshot)
-        }
-        results
-    }
-    resultsDeferred.await()
 }
 
 expect fun getDirEntry(path: String): DirEntry?

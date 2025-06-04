@@ -38,7 +38,7 @@ import minio_multiplatform.composeapp.generated.resources.content_empty
 import minio_multiplatform.composeapp.generated.resources.more_horiz_24dp
 import org.example.project.data.DirEntry
 import org.example.project.data.SharedViewModel
-import org.example.project.data.formatLastModified
+import org.example.project.data.formatTimeMillis
 import org.example.project.data.openDocument
 import org.jetbrains.compose.resources.painterResource
 
@@ -223,7 +223,7 @@ actual fun FileItemCard(
                         },
                     )
                     Text(
-                        formatLastModified(file.lastModified),
+                        formatTimeMillis(file.lastModified),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }

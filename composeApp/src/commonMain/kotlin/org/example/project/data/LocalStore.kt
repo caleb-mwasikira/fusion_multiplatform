@@ -9,20 +9,13 @@ import java.io.IOException
 import kotlin.system.measureTimeMillis
 
 @Serializable
-data class FileSnapshot(
-    val path: String = "",
-    var lastModified: Long? = null,
+data class Store(
+    val trackedDirectories: MutableMap<String, List<Snapshot>> = mutableMapOf(),
+    val trackedDevices: MutableSet<Device> = mutableSetOf(),
 )
-
-@Serializable
-data class Preferences(
-    val trackedDirFiles: MutableMap<String, List<FileSnapshot>> = mutableMapOf(),
-)
-
-fun Preferences.getTrackedDirs(): Set<String> = this.trackedDirFiles.keys
 
 // Use this to save user preferences and settings persistently across sessions
-object CustomPreferences {
+object LocalStore {
     private val json = Json { ignoreUnknownKeys = true }
     private var _file: File? = null
     val file: File
@@ -37,36 +30,42 @@ object CustomPreferences {
             return newFile
         }
 
-    private var _prefs: Preferences? = null
-    val prefs: Preferences
+    private var _store: Store? = null
+    val store: Store
         get() {
-            if (_prefs != null) {
-                return _prefs!!
+            if (_store != null) {
+                return _store!!
             }
 
             val data = file.readText()
             if (data.isEmpty()) {
-                _prefs = Preferences()
+                _store = Store()
                 save()
-                return _prefs!!
+                return _store!!
             }
 
-            _prefs = json.decodeFromString<Preferences>(data)
-            return _prefs!!
+            _store = json.decodeFromString<Store>(data)
+            return _store!!
         }
 
-    private fun save() {
-        file.writeText(json.encodeToString(prefs))
+    private fun save(): Boolean {
+        return try {
+            file.writeText(json.encodeToString(store))
+            true
+        } catch (e: Exception) {
+            println("Error saving tracked dirs; ${e.message}")
+            false
+        }
     }
 
     fun getTrackedDirs(): Set<String> {
-        return prefs.getTrackedDirs().also {
-            println("Loaded synced dirs from CustomPreferences; $it")
+        return store.trackedDirectories.keys.also {
+            println("Loaded tracked dirs from store; $it")
         }
     }
 
     suspend fun trackNewDir(dir: String): Boolean = withContext(Dispatchers.IO) {
-        val alreadyExists = prefs.getTrackedDirs().contains(dir)
+        val alreadyExists = store.trackedDirectories.containsKey(dir)
         if (alreadyExists) {
             return@withContext false
         }
@@ -74,12 +73,11 @@ object CustomPreferences {
         return@withContext try {
             println("Taking dir snapshot of dir $dir...")
             val elapsed = measureTimeMillis {
-                val snapshotFiles = takeDirSnapshot(dir)
-                prefs.trackedDirFiles[dir] = snapshotFiles
+                val snapshots = getSnapshotsOfAllFilesIn(dir)
+                store.trackedDirectories[dir] = snapshots
             }
             println("Done taking dir snapshot in $elapsed ms")
-            save()
-            true
+            return@withContext save()
 
         } catch (e: Exception) {
             println("Error taking dir snapshot; ${e.message}")
@@ -87,14 +85,14 @@ object CustomPreferences {
         }
     }
 
-    fun removeTrackedDir(dir: String): Boolean {
-        prefs.trackedDirFiles.remove(dir)
-        save()
-        return true
+    fun getTrackedDevices(): Set<Device> {
+        return store.trackedDevices
     }
 
-    fun getTrackedDirFiles(dir: String): List<FileSnapshot>? {
-        return prefs.trackedDirFiles[dir]
+    fun trackNewDevice(device: Device): Boolean {
+        val trackedDevices = store.trackedDevices
+        if (trackedDevices.contains(device)) return false
+        store.trackedDevices.add(device)
+        return save()
     }
-
 }

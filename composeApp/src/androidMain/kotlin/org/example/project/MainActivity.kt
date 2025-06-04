@@ -7,7 +7,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import org.example.project.data.SharedViewModel
+import org.example.project.data.startFileSyncServer
 import org.example.project.widgets.getWindowSizeClass
 
 class MainActivity : ComponentActivity() {
@@ -35,6 +38,10 @@ class MainActivity : ComponentActivity() {
                     sharedViewModel.trackNewDir(uri.toString())
                 }
             }
+        }
+
+        lifecycleScope.launch {
+            startFileSyncServer()
         }
 
         setContent {

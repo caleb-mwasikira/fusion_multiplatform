@@ -135,7 +135,8 @@ actual fun FilesGrid(
             }
 
             val defaultMouseIcon = remember { PointerIcon.Default }
-            val loadingMouseIcon = remember { PointerIcon(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)) }
+            val loadingMouseIcon =
+                remember { PointerIcon(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)) }
             var isLoading by remember { mutableStateOf(false) }
 
             LaunchedEffect(isLoading) {

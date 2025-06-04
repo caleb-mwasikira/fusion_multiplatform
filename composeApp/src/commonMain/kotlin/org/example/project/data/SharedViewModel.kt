@@ -2,7 +2,14 @@ package org.example.project.data
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshotFlow
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.get
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -34,12 +41,17 @@ class SharedViewModel {
     val hidingHiddenFiles = MutableStateFlow(true)
     val selectedFileFilter = MutableStateFlow<FileType?>(null)
 
-    private var _trackedDirs = MutableStateFlow<Set<String>>(emptySet())
+    private var _trackedDirs = MutableStateFlow(LocalStore.getTrackedDirs())
     private var _workingDir = MutableStateFlow<DirEntry?>(null)
     private val _currentFiles = MutableStateFlow<List<DirEntry>>(emptyList())
     private val _filteredFiles = MutableStateFlow<List<DirEntry>>(emptyList())
     val files: StateFlow<List<DirEntry>>
-        get() = _filteredFiles
+        get() = _filteredFiles.asStateFlow()
+
+    private var _trackedDevices = MutableStateFlow(LocalStore.getTrackedDevices())
+    val trackedDevices = _trackedDevices.asStateFlow()
+    private var _onlineDevices = MutableStateFlow<List<Device>>(emptyList())
+    val onlineDevices = _onlineDevices.asStateFlow()
 
     private var _clipboardFiles = mutableStateListOf<DirEntry>()
     private val _clipboardAction = MutableStateFlow<ClipboardAction?>(null)
@@ -47,13 +59,15 @@ class SharedViewModel {
     val isOkayToPaste = _isOkayToPaste.asStateFlow()
 
     private val _uiMessages =
-        MutableSharedFlow<UIMessages>() // Error, warning or info messages to be sent to the UI
+        MutableSharedFlow<UIMessages>()
     val uiMessages = _uiMessages.asSharedFlow()
 
     private val viewModelScope = CoroutineScope(Dispatchers.Default + Job())
 
     init {
-        _trackedDirs.value = CustomPreferences.getTrackedDirs()
+        viewModelScope.launch {
+            getOnlineDevices()
+        }
 
         viewModelScope.launch {
             // the combine function runs every time any of the input flows
@@ -131,10 +145,16 @@ class SharedViewModel {
         _trackedDirs.update { oldList ->
             oldList + dir
         }
-
         viewModelScope.launch {
-            CustomPreferences.trackNewDir(dir)
-            refreshCurrentDir()
+            LocalStore.trackNewDir(dir)
+        }
+    }
+
+    fun refreshCurrentDir() {
+        _currentFiles.value = if (_workingDir.value == null) {
+            createRootDir(_trackedDirs.value).toList()
+        } else {
+            listDirEntries(_workingDir.value!!.path)
         }
     }
 
@@ -155,7 +175,6 @@ class SharedViewModel {
         val previousDir = previousDirs.pop()
         nextDirs.push(_workingDir.value)
         _workingDir.value = previousDir
-        refreshCurrentDir()
     }
 
     fun gotoNextDir() {
@@ -185,16 +204,6 @@ class SharedViewModel {
         _clipboardAction.value = action
     }
 
-    fun refreshCurrentDir() {
-        _trackedDirs.value = CustomPreferences.getTrackedDirs()
-        _currentFiles.update {
-            _workingDir.value?.let {
-                listDirEntries(it.path)
-            } ?: createRootDir(_trackedDirs.value).toList()
-        }
-        println("Refreshing current dir; ${_currentFiles.value}")
-    }
-
     suspend fun paste() {
         if (!_isOkayToPaste.value) {
             _uiMessages.emit(
@@ -207,33 +216,35 @@ class SharedViewModel {
             ClipboardAction.Copy -> {
                 // Setting overwrite == true is dangerous; we might end up overwriting user's files
                 // TODO: fixme - add prompt asking user if they wish to overwrite a file
+                _uiMessages.emit(
+                    UIMessages.Info("Copying files into ${_workingDir.value?.path ?: "root directory"}")
+                )
                 copyFiles(_clipboardFiles, _workingDir.value!!, true)
             }
 
             ClipboardAction.Cut -> {
+                _uiMessages.emit(
+                    UIMessages.Info("Cutting files into ${_workingDir.value?.path ?: "root directory"}")
+                )
                 moveFiles(_clipboardFiles, _workingDir.value!!, true)
             }
         }
-
-        _clipboardFiles.clear()
-        refreshCurrentDir()
-
         errors.forEach {
             val errMessage = it.exception?.message ?: return@forEach
             _uiMessages.emit(
                 UIMessages.Error(errMessage)
             )
         }
+        _clipboardFiles.clear()
+        refreshCurrentDir()
     }
 
     suspend fun delete(files: List<DirEntry>) {
+        _uiMessages.emit(
+            UIMessages.Info("Deleting ${files.size} files")
+        )
         deleteFiles(files)
         refreshCurrentDir()
-        viewModelScope.launch {
-            _uiMessages.emit(
-                UIMessages.Info("Deleted ${files.size} files")
-            )
-        }
     }
 
     /**
@@ -245,7 +256,7 @@ class SharedViewModel {
                 UIMessages.Info("Searching files...")
             )
 
-            val trackedDirs = CustomPreferences.getTrackedDirs()
+            val trackedDirs = LocalStore.getTrackedDirs()
             val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
             val regex = Regex(".*$filename.*", RegexOption.IGNORE_CASE)
 
@@ -263,4 +274,58 @@ class SharedViewModel {
             }
             _currentFiles.value = foundFiles
         }
+
+    suspend fun trackNewDevice(device: Device) {
+        val ok = LocalStore.trackNewDevice(device)
+        if (!ok) {
+            _uiMessages.emit(
+                UIMessages.Error("Unexpected error syncing with device")
+            )
+            return
+        }
+        _trackedDevices.value = LocalStore.getTrackedDevices()
+    }
+
+    suspend fun getOnlineDevices() = withContext(Dispatchers.IO) {
+        _uiMessages.emit(
+            UIMessages.Info("Searching for devices within your local network")
+        )
+        val networkDevices = Network.getNetworkDevices()
+        if (networkDevices.isEmpty()) {
+            _uiMessages.emit(
+                UIMessages.Info("No devices found within your local network")
+            )
+            return@withContext
+        }
+
+        val client = HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+        val onlineDevicesDeferred = networkDevices.map { networkDevice ->
+            val result: Deferred<Device?> = async(Dispatchers.IO) {
+                try {
+                    println("Connecting to network device $networkDevice...")
+                    val response = client.get("http://$networkDevice:8080/")
+                    val device: Device = response.body()
+                    println("Connected to device $networkDevice")
+                    return@async device
+
+                } catch (e: Exception) {
+                    println("Error connecting to network device $networkDevice; ${e.message}")
+                    return@async null
+                }
+            }
+            return@map result
+        }
+        val onlineDevices = onlineDevicesDeferred.awaitAll().filterNotNull()
+        if (onlineDevices.isEmpty()) {
+            _uiMessages.emit(
+                UIMessages.Error("No connected devices found")
+            )
+        }
+        _onlineDevices.value = onlineDevices
+        return@withContext
+    }
 }

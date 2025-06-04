@@ -21,9 +21,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +51,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import minio_multiplatform.composeapp.generated.resources.Res
+import minio_multiplatform.composeapp.generated.resources.add_24dp
 import minio_multiplatform.composeapp.generated.resources.chevron_left_24dp
 import minio_multiplatform.composeapp.generated.resources.chevron_right_24dp
 import minio_multiplatform.composeapp.generated.resources.external_hard_drive
@@ -62,6 +64,8 @@ import minio_multiplatform.composeapp.generated.resources.visibility_off_24dp
 import org.example.project.data.FileType
 import org.example.project.data.SharedViewModel
 import org.example.project.data.UIMessages
+import org.example.project.widgets.AddNewDeviceDialog
+import org.example.project.widgets.DeviceCardExpanded
 import org.example.project.widgets.FilesGrid
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -82,23 +86,64 @@ fun MainPanel(
             onOpenDrawer = onOpenDrawer,
         )
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-        ) {
-            HardDrive2(
-                name = "Hard Drive #1",
-                storage = "64 Gb / 128 Gb",
-                icon = Res.drawable.external_hard_drive
-            )
+        var addNewDevice by remember { mutableStateOf(false) }
+        val trackedDevices by sharedViewModel.trackedDevices.collectAsState()
 
-            HardDrive2(
-                name = "Hard Drive #2",
-                storage = "83 Gb / 512 Gb",
-                icon = Res.drawable.external_hard_drive
+        if (addNewDevice) {
+            AddNewDeviceDialog(
+                sharedViewModel = sharedViewModel,
+                onDismissRequest = {
+                    addNewDevice = false
+                },
             )
+        }
+
+        if (trackedDevices.isEmpty()) {
+            ElevatedButton(
+                onClick = {
+                    addNewDevice = true
+                },
+                colors = ButtonDefaults.elevatedButtonColors().copy(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.padding(8.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(4.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.add_24dp),
+                        contentDescription = "Sync With New Device",
+                        modifier = Modifier.padding(4.dp)
+                            .size(24.dp)
+                    )
+
+                    Text(
+                        "Sync New Device",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
+            }
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+            ) {
+                trackedDevices.forEach { device ->
+                    DeviceCardExpanded(
+                        device = device,
+                        icon = Res.drawable.external_hard_drive,
+                        onClick = {},
+                    )
+                }
+            }
         }
 
         val selectedFileFilter by sharedViewModel.selectedFileFilter.collectAsState()
@@ -132,15 +177,18 @@ fun MainPanel(
                 LaunchedEffect(Unit) {
                     sharedViewModel.uiMessages.collectLatest {
                         message = it
-                        delay(5000)
+                        delay(3000)
                         message = null
                     }
                 }
 
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    message?.let {
+                message?.let { msg ->
+                    val containerColor = when (msg) {
+                        is UIMessages.Info -> MaterialTheme.colorScheme.primary
+                        is UIMessages.Warn, is UIMessages.Error -> MaterialTheme.colorScheme.secondary
+                    }
+
+                    Column {
                         AnimatedVisibility(
                             visible = true,
                             enter = slideInVertically { it },
@@ -148,12 +196,20 @@ fun MainPanel(
                         ) {
                             Card(
                                 modifier = Modifier
-                                    .padding(horizontal = 12.dp)
+                                    .padding(horizontal = 12.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = containerColor,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
                             ) {
                                 Text(
-                                    it.message,
+                                    msg.message,
                                     style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(12.dp)
+                                    modifier = Modifier.padding(
+                                        horizontal = 24.dp,
+                                        vertical = 16.dp
+                                    )
                                 )
                             }
                         }
@@ -229,7 +285,7 @@ fun TopBar(
                         )
                     }
                 },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
                 placeholder = {
                     Text(
                         "Search for files",
@@ -443,73 +499,6 @@ fun FilterItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-        }
-    }
-}
-
-@Composable
-fun HardDrive2(
-    name: String,
-    storage: String,
-    icon: DrawableResource = Res.drawable.external_hard_drive,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val cardContainerColor = if (isHovered) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.background
-    }
-    val contentColor = if (isHovered) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.scrim.copy(alpha = 0.8f)
-    }
-
-    Card(
-        modifier = Modifier
-            .hoverable(interactionSource)
-            .pointerHoverIcon(PointerIcon.Hand),
-        colors = CardDefaults.cardColors().copy(
-            containerColor = cardContainerColor,
-            contentColor = contentColor,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(horizontal = 32.dp, vertical = 28.dp)
-        ) {
-            Image(
-                painter = painterResource(icon),
-                contentDescription = null,
-                modifier = Modifier.size(48.dp)
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(48.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        name,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-
-                    Text(
-                        storage,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
-
-                CircularProgressIndicator(
-                    progress = { 0.6f },
-                    color = contentColor,
-                    trackColor = cardContainerColor,
-                )
-            }
         }
     }
 }

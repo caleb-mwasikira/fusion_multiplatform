@@ -84,7 +84,7 @@ fun DesktopScreen(
                     .width(400.dp)
                     .background(
                         color = MaterialTheme.colorScheme.surfaceContainer,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(8.dp)
                     )
                     .padding(12.dp),
                 onUploadDirectory = onUploadDirectory,

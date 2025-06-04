@@ -31,11 +31,10 @@ expect fun createNewFile(filename: String): File?
  */
 expect fun openDocument(doc: DirEntry)
 
-fun formatLastModified(lastModified: Long): String {
+fun formatTimeMillis(timeMillis: Long): String {
     val zone = TimeZone.getDefault()
-    val dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastModified), zone.toZoneId())
-    val formattedDate = dateTime.toString().substringBefore("T")
-    return formattedDate
+    val dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(timeMillis), zone.toZoneId())
+    return dateTime.toString()
 }
 
 fun formatFileSize(bytes: Long): String {
