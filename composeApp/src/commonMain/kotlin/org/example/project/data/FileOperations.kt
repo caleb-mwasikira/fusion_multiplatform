@@ -1,9 +1,6 @@
 package org.example.project.data
 
 import java.io.File
-import java.time.Instant
-import java.time.LocalDateTime
-import java.util.TimeZone
 
 enum class ClipboardAction {
     Copy, Cut
@@ -14,39 +11,31 @@ data class FileError(
     val exception: Throwable?
 )
 
-expect suspend fun copyFiles(
-    files: List<DirEntry>, destination: DirEntry, overwrite: Boolean
-): List<FileError>
+expect object FileOperations {
+    suspend fun copy(
+        files: List<DirEntry>, destination: DirEntry, overwrite: Boolean
+    ): List<FileError>
 
-expect suspend fun moveFiles(
-    files: List<DirEntry>, destination: DirEntry, overwrite: Boolean
-): List<FileError>
+    suspend fun move(
+        files: List<DirEntry>, destination: DirEntry, overwrite: Boolean
+    ): List<FileError>
 
-expect suspend fun deleteFiles(files: List<DirEntry>): List<FileError>
+    suspend fun rename(
+        file: DirEntry, newFilename: String,
+    ): Boolean
 
-expect fun createNewFile(filename: String): File?
+    suspend fun delete(files: List<DirEntry>): List<FileError>
 
-/**
- * Opens a document for viewing within the running platform
- */
-expect fun openDocument(doc: DirEntry)
+    fun createInternalFile(filename: String): File?
 
-fun formatTimeMillis(timeMillis: Long): String {
-    val zone = TimeZone.getDefault()
-    val dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(timeMillis), zone.toZoneId())
-    return dateTime.toString()
-}
+    suspend fun createExternalFile(
+        filename: String,
+        targetDir: String,
+        isDirectory: Boolean
+    ): Boolean
 
-fun formatFileSize(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-
-    val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    var size = bytes.toDouble()
-    var unitIndex = 0
-
-    while (size >= 1024 && unitIndex < units.lastIndex) {
-        size /= 1024
-        unitIndex++
-    }
-    return String.format("%.2f %s", size, units[unitIndex])
+    /**
+     * Opens a document for viewing within the running platform
+     */
+    suspend fun open(doc: DirEntry)
 }

@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,16 +28,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import minio_multiplatform.composeapp.generated.resources.Res
 import minio_multiplatform.composeapp.generated.resources.content_empty
-import minio_multiplatform.composeapp.generated.resources.more_horiz_24dp
 import org.example.project.data.DirEntry
+import org.example.project.data.FileOperations
 import org.example.project.data.SharedViewModel
 import org.example.project.data.formatTimeMillis
-import org.example.project.data.openDocument
+import org.example.project.data.getFileIcon
+import org.example.project.data.isDirectory
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -47,11 +47,12 @@ actual fun FilesGrid(
     sharedViewModel: SharedViewModel,
 ) {
     val files by sharedViewModel.files.collectAsState()
-    var inSelectMode by remember { mutableStateOf(false) }
+    var openContextMenu by remember { mutableStateOf(false) }
     val selectedFiles = remember { mutableStateListOf<DirEntry>() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(selectedFiles.size) {
-        inSelectMode = selectedFiles.isNotEmpty()
+        openContextMenu = selectedFiles.isNotEmpty()
     }
 
     Box(
@@ -59,30 +60,67 @@ actual fun FilesGrid(
             .fillMaxSize()
             .combinedClickable(
                 onClick = {
-                    inSelectMode = false
+                    openContextMenu = false
                 },
                 onLongClick = {
-                    inSelectMode = !inSelectMode
+                    openContextMenu = !openContextMenu
                 }
             )
     ) {
-        if (files.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Image(
-                    painter = painterResource(Res.drawable.content_empty),
-                    contentDescription = null,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    "Empty directory",
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.weight(1f)
-                )
+        var displayDeleteDialog by remember { mutableStateOf(false) }
+        var displayRenameDialog by remember { mutableStateOf(false) }
+        val onDismissRequest = {
+            displayDeleteDialog = false
+            displayRenameDialog = false
+            openContextMenu = false
+            selectedFiles.clear()
+        }
+
+        // Close context menu when rename dialog or delete dialog is open
+        LaunchedEffect(displayRenameDialog, displayDeleteDialog) {
+            if (displayRenameDialog || displayDeleteDialog) {
+                openContextMenu = false
             }
+        }
+
+        if (displayDeleteDialog) {
+            ConfirmationDialog(
+                title = "Are you sure you want to delete this file?",
+                subtitle = "This action is irreversible",
+                onDismissRequest = onDismissRequest,
+                onDecline = onDismissRequest,
+                onAccept = {
+                    // Copying selected files into its own variable to avoid
+                    // the list being cleared by on-dismiss before its values are used
+                    val filesToBeDeleted = selectedFiles.toList()
+                    scope.launch {
+                        sharedViewModel.delete(filesToBeDeleted)
+                    }
+                    onDismissRequest()
+                }
+            )
+        }
+
+        if (displayRenameDialog && selectedFiles.isNotEmpty()) {
+            val file = remember { selectedFiles.first() }
+
+            RenameFileDialog(
+                file = file,
+                onDismissRequest = {
+                    displayRenameDialog = false
+                    onDismissRequest()
+                },
+                onAccept = { newFilename ->
+                    scope.launch {
+                        sharedViewModel.rename(file, newFilename)
+                    }
+                    onDismissRequest()
+                },
+                onDecline = {
+                    displayRenameDialog = false
+                    onDismissRequest()
+                }
+            )
         }
 
         LazyColumn(
@@ -90,66 +128,64 @@ actual fun FilesGrid(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(8.dp)
         ) {
-            items(count = files.size) { index ->
-                val file = files[index]
-                val alreadySelected = selectedFiles.contains(file)
+            if (files.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Image(
+                            painter = painterResource(Res.drawable.content_empty),
+                            contentDescription = null,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            "Empty directory",
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            } else {
+                items(count = files.size) { index ->
+                    val file = files[index]
+                    val isSelected = selectedFiles.contains(file)
 
-                FileItemCard(
-                    file = file,
-                    isSelected = selectedFiles.contains(file),
-                    modifier = Modifier.combinedClickable(
-                        onClick = {
-                            if (inSelectMode) {
-                                if (alreadySelected) {
+                    FileItemCard(
+                        file = file,
+                        isSelected = isSelected,
+                        modifier = Modifier.combinedClickable(
+                            onClick = {
+                                if (openContextMenu) {
+                                    if (isSelected) {
+                                        selectedFiles.remove(file)
+                                    } else {
+                                        selectedFiles.add(file)
+                                    }
+                                    return@combinedClickable
+                                }
+
+                                selectedFiles.clear()
+                                if (file.isDirectory()) {
+                                    sharedViewModel.changeWorkingDir(file)
+                                } else {
+                                    scope.launch {
+                                        FileOperations.open(file)
+                                    }
+                                }
+                            },
+                            onLongClick = {
+                                if (isSelected) {
                                     selectedFiles.remove(file)
                                 } else {
                                     selectedFiles.add(file)
                                 }
-                                return@combinedClickable
                             }
-
-                            selectedFiles.clear()
-                            if (file.isDirectory) {
-                                sharedViewModel.changeWorkingDir(file)
-                            } else {
-                                openDocument(file)
-                            }
-                        },
-                        onLongClick = {
-                            if (alreadySelected) {
-                                selectedFiles.remove(file)
-                            } else {
-                                selectedFiles.add(file)
-                            }
-                        }
+                        )
                     )
-                )
-            }
-        }
-
-        var inDeleteMode by remember { mutableStateOf(false) }
-        val scope = rememberCoroutineScope()
-
-        if (inDeleteMode) {
-            ConfirmationDialog(
-                title = "Are you sure you want to delete this file?",
-                subtitle = "This action is irreversible",
-                onDismissRequest = {
-                    inDeleteMode = false
-                    selectedFiles.clear()
-                },
-                onDecline = {
-                    inDeleteMode = false
-                    selectedFiles.clear()
-                },
-                onAccept = {
-                    scope.launch {
-                        sharedViewModel.delete(selectedFiles)
-                        selectedFiles.clear()
-                    }
-                    inDeleteMode = false
                 }
-            )
+            }
         }
 
         Box(
@@ -158,15 +194,18 @@ actual fun FilesGrid(
                 .align(Alignment.BottomCenter)
         ) {
             ContextMenu(
-                expanded = inSelectMode,
-                onDismissRequest = {
-                    inSelectMode = false
-                },
-                onDeleteRequest = {
-                    inDeleteMode = true
-                },
+                expanded = openContextMenu,
                 selectedFiles = selectedFiles,
                 sharedViewModel = sharedViewModel,
+                onDismissRequest = {
+                    openContextMenu = false
+                },
+                onDeleteFiles = {
+                    displayDeleteDialog = true
+                },
+                onRenameFiles = {
+                    displayRenameDialog = true
+                },
             )
         }
     }
@@ -177,7 +216,7 @@ actual fun FilesGrid(
 actual fun FileItemCard(
     file: DirEntry,
     modifier: Modifier,
-    isSelected: Boolean
+    isSelected: Boolean,
 ) {
     Card(
         colors = CardDefaults.cardColors().copy(
@@ -202,7 +241,7 @@ actual fun FileItemCard(
         ) {
             Row {
                 Image(
-                    painter = painterResource(file.fileType.icon),
+                    painter = painterResource(getFileIcon(file.fileType)),
                     contentDescription = null,
                     modifier = Modifier.size(48.dp)
                 )
@@ -214,6 +253,7 @@ actual fun FileItemCard(
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
+                        textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = if (isSelected) {
@@ -222,20 +262,12 @@ actual fun FileItemCard(
                             MaterialTheme.colorScheme.scrim
                         },
                     )
+
                     Text(
                         formatTimeMillis(file.lastModified),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-            }
-            IconButton(
-                onClick = {}
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.more_horiz_24dp),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
-                )
             }
         }
     }

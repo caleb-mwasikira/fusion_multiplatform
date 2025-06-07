@@ -42,7 +42,7 @@ suspend fun getSnapshotsOfAllFilesIn(path: String): List<Snapshot> = withContext
         while (stack.isNotEmpty()) {
             val child =
                 stack.pop() ?: throw IllegalStateException("Stack isNotEmpty() function is broken")
-            if (child.isDirectory) {
+            if (child.isDirectory()) {
                 children = listDirEntries(child.path)
                 stack.pushMany(*children.toTypedArray())
                 continue

@@ -151,6 +151,7 @@ class SharedViewModel {
     }
 
     fun refreshCurrentDir() {
+        println("Refreshing current dir...")
         _currentFiles.value = if (_workingDir.value == null) {
             createRootDir(_trackedDirs.value).toList()
         } else {
@@ -167,12 +168,15 @@ class SharedViewModel {
             nextDirs.clear()
         }
 
+        println("Changing working directory to ${dir.path}")
         _workingDir.value = dir
-        println("Changed working dir to $dir")
     }
 
     fun gotoPreviousDir() {
         val previousDir = previousDirs.pop()
+        previousDir?.let {
+            println("Moving to previous directory; ${it.path}")
+        }
         nextDirs.push(_workingDir.value)
         _workingDir.value = previousDir
     }
@@ -180,13 +184,13 @@ class SharedViewModel {
     fun gotoNextDir() {
         val nextDir = nextDirs.pop()
         nextDir?.let {
+            println("Moving to next directory; ${it.path}")
             previousDirs.push(_workingDir.value)
             _workingDir.value = it
-            println("Moved to next dir; $it")
         }
     }
 
-    fun addPasteBin(newFiles: List<DirEntry>, action: ClipboardAction) {
+    fun copyOrCut(newFiles: List<DirEntry>, action: ClipboardAction) {
         if (newFiles.isEmpty()) return
         viewModelScope.launch {
             val message = if (action == ClipboardAction.Copy) {
@@ -204,7 +208,7 @@ class SharedViewModel {
         _clipboardAction.value = action
     }
 
-    suspend fun paste() {
+    suspend fun pasteFiles() {
         if (!_isOkayToPaste.value) {
             _uiMessages.emit(
                 UIMessages.Error("Paste action currently not permitted")
@@ -216,17 +220,11 @@ class SharedViewModel {
             ClipboardAction.Copy -> {
                 // Setting overwrite == true is dangerous; we might end up overwriting user's files
                 // TODO: fixme - add prompt asking user if they wish to overwrite a file
-                _uiMessages.emit(
-                    UIMessages.Info("Copying files into ${_workingDir.value?.path ?: "root directory"}")
-                )
-                copyFiles(_clipboardFiles, _workingDir.value!!, true)
+                FileOperations.copy(_clipboardFiles, _workingDir.value!!, true)
             }
 
             ClipboardAction.Cut -> {
-                _uiMessages.emit(
-                    UIMessages.Info("Cutting files into ${_workingDir.value?.path ?: "root directory"}")
-                )
-                moveFiles(_clipboardFiles, _workingDir.value!!, true)
+                FileOperations.move(_clipboardFiles, _workingDir.value!!, true)
             }
         }
         errors.forEach {
@@ -236,31 +234,33 @@ class SharedViewModel {
             )
         }
         _clipboardFiles.clear()
+        _clipboardAction.value = null
         refreshCurrentDir()
     }
 
     suspend fun delete(files: List<DirEntry>) {
-        _uiMessages.emit(
-            UIMessages.Info("Deleting ${files.size} files")
-        )
-        deleteFiles(files)
+        if (files.isEmpty()) return
+        val fileErrors = FileOperations.delete(files)
+        fileErrors.forEach { fileError ->
+            fileError.exception?.message?.let {
+                _uiMessages.emit(UIMessages.Error(it))
+            }
+        }
         refreshCurrentDir()
     }
 
     /**
      * Searches for tracked files or directories matching the given filename
      */
-    suspend fun searchFilesWithName(filename: String, ignoreHiddenFiles: Boolean = true) =
+    suspend fun search(filename: String, ignoreHiddenFiles: Boolean = true) =
         withContext(Dispatchers.IO) {
             _uiMessages.emit(
                 UIMessages.Info("Searching files...")
             )
 
-            val trackedDirs = LocalStore.getTrackedDirs()
             val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
             val regex = Regex(".*$filename.*", RegexOption.IGNORE_CASE)
-
-            val results = trackedDirs.map {
+            val results = _trackedDirs.value.map {
                 scope.async {
                     val dirEntries = listDirEntriesRecursive(it, ignoreHiddenFiles)
                     dirEntries.filter { dirEntry -> regex.containsMatchIn(dirEntry.name) }
@@ -275,13 +275,13 @@ class SharedViewModel {
             _currentFiles.value = foundFiles
         }
 
-    suspend fun trackNewDevice(device: Device) {
+    suspend fun trackNewDevice(device: Device) = withContext(Dispatchers.IO) {
         val ok = LocalStore.trackNewDevice(device)
         if (!ok) {
             _uiMessages.emit(
                 UIMessages.Error("Unexpected error syncing with device")
             )
-            return
+            return@withContext
         }
         _trackedDevices.value = LocalStore.getTrackedDevices()
     }
@@ -327,5 +327,36 @@ class SharedViewModel {
         }
         _onlineDevices.value = onlineDevices
         return@withContext
+    }
+
+    suspend fun createNewFile(isDirectory: Boolean) = withContext(Dispatchers.IO) {
+        if (_workingDir.value == null) {
+            _uiMessages.emit(
+                UIMessages.Error("Cannot create new file at root directory")
+            )
+            return@withContext
+        }
+
+        val filename = if (isDirectory) "New Folder" else "New File"
+        val ok = FileOperations.createExternalFile(filename, _workingDir.value!!.path, isDirectory)
+        if (ok) {
+            refreshCurrentDir()
+        } else {
+            _uiMessages.emit(UIMessages.Error("Error creating new file"))
+        }
+    }
+
+    suspend fun rename(file: DirEntry, newFilename: String) = withContext(Dispatchers.IO) {
+        if (newFilename.isEmpty()) {
+            _uiMessages.emit(UIMessages.Error("Filename cannot be empty"))
+            return@withContext
+        }
+
+        val ok = FileOperations.rename(file, newFilename)
+        if (!ok) {
+            _uiMessages.emit(UIMessages.Error("Error renaming file"))
+            return@withContext
+        }
+        refreshCurrentDir()
     }
 }

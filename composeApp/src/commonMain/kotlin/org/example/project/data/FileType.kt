@@ -14,18 +14,18 @@ import minio_multiplatform.composeapp.generated.resources.video_file
 import minio_multiplatform.composeapp.generated.resources.zip_folder
 import org.jetbrains.compose.resources.DrawableResource
 
-enum class FileType(val icon: DrawableResource) {
-    IMAGE(Res.drawable.image_file),
-    VIDEO(Res.drawable.video_file),
-    AUDIO(Res.drawable.audio_file),
-    PDF(Res.drawable.pdf_file),
-    DOCUMENT(Res.drawable.doc_file),
-    POWERPOINT(Res.drawable.ppt_file),
-    EXCEL(Res.drawable.excel_file),
-    TEXT(Res.drawable.text_file),
-    FOLDER(Res.drawable.folder),
-    ZIP(Res.drawable.zip_folder),
-    UNKNOWN(Res.drawable.unknown_file)
+enum class FileType(val mime: String) {
+    IMAGE("image/*"),
+    VIDEO("video/*"),
+    AUDIO("audio/*"),
+    PDF("application/pdf"),
+    DOCUMENT("application/msword"),
+    POWERPOINT("application/vnd.ms-powerpoint"),
+    EXCEL("application/vnd.ms-excel"),
+    TEXT("text/plain"),
+    FOLDER(""),
+    ZIP("application/zip"),
+    UNKNOWN("*/*")
 }
 
 fun getFileType(isDirectory: Boolean, extension: String): FileType {
@@ -42,5 +42,21 @@ fun getFileType(isDirectory: Boolean, extension: String): FileType {
         "txt", "csv", "rtf", "odt" -> FileType.TEXT
         "zip", "rar", "7z", "tar", "gz" -> FileType.ZIP
         else -> FileType.UNKNOWN
+    }
+}
+
+fun getFileIcon(fileType: FileType): DrawableResource {
+    return when (fileType) {
+        FileType.IMAGE -> Res.drawable.image_file
+        FileType.VIDEO -> Res.drawable.video_file
+        FileType.AUDIO -> Res.drawable.audio_file
+        FileType.PDF -> Res.drawable.pdf_file
+        FileType.DOCUMENT -> Res.drawable.doc_file
+        FileType.POWERPOINT -> Res.drawable.ppt_file
+        FileType.EXCEL -> Res.drawable.excel_file
+        FileType.TEXT -> Res.drawable.text_file
+        FileType.FOLDER -> Res.drawable.folder
+        FileType.ZIP -> Res.drawable.zip_folder
+        FileType.UNKNOWN -> Res.drawable.unknown_file
     }
 }

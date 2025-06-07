@@ -64,6 +64,7 @@ import minio_multiplatform.composeapp.generated.resources.visibility_off_24dp
 import org.example.project.data.FileType
 import org.example.project.data.SharedViewModel
 import org.example.project.data.UIMessages
+import org.example.project.data.getFileIcon
 import org.example.project.widgets.AddNewDeviceDialog
 import org.example.project.widgets.DeviceCardExpanded
 import org.example.project.widgets.FilesGrid
@@ -158,10 +159,12 @@ fun MainPanel(
             // MyFiles
             Box {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    FilesActionBar(sharedViewModel)
+                    FilesActionBar(
+                        sharedViewModel = sharedViewModel
+                    )
 
                     FilesGrid(
                         sharedViewModel = sharedViewModel
@@ -272,7 +275,7 @@ fun TopBar(
                         onClick = {
                             if (text.isNotEmpty()) {
                                 scope.launch {
-                                    sharedViewModel.searchFilesWithName(text)
+                                    sharedViewModel.search(text)
                                 }
                             }
                         },
@@ -354,7 +357,7 @@ fun QuickAccess(
 
                 FilterItem(
                     label = fileType.name,
-                    icon = fileType.icon,
+                    icon = getFileIcon(fileType),
                     isSelected = isSelected,
                     onClick = {
                         // If user clicks on an already selected item, we deselect it

@@ -24,7 +24,7 @@ object LocalStore {
                 return _file!!
             }
 
-            val newFile = createNewFile("synced_files.json")
+            val newFile = FileOperations.createInternalFile("synced_files.json")
                 ?: throw IOException("Error creating internal file")
             _file = newFile
             return newFile

@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.hoverable
@@ -52,12 +53,14 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,8 +68,10 @@ import minio_multiplatform.composeapp.generated.resources.Res
 import minio_multiplatform.composeapp.generated.resources.content_empty
 import org.example.project.SelectionMode
 import org.example.project.data.DirEntry
+import org.example.project.data.FileOperations
 import org.example.project.data.SharedViewModel
-import org.example.project.data.openDocument
+import org.example.project.data.getFileIcon
+import org.example.project.data.isDirectory
 import org.jetbrains.compose.resources.painterResource
 import java.awt.Cursor
 
@@ -78,7 +83,7 @@ actual fun FilesGrid(
     val files by sharedViewModel.files.collectAsState()
     val selectedFiles = remember { mutableStateListOf<DirEntry>() }
     var selectionMode by remember { mutableStateOf<SelectionMode?>(null) }
-    var inSelectMode by remember { mutableStateOf(false) }
+    var openContextMenu by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
     // Runs every time files changes
@@ -91,6 +96,14 @@ actual fun FilesGrid(
 
     Box(
         modifier = Modifier.fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) {
+                // Click out-of-bounds to remove all files
+                focusRequester.requestFocus()
+                selectedFiles.clear()
+            }
     ) {
         var widgetPosition by remember { mutableStateOf(Offset.Zero) }
 
@@ -109,7 +122,7 @@ actual fun FilesGrid(
                                     (widgetPosition.x + localPos.x).toInt(),
                                     (widgetPosition.y + localPos.y).toInt()
                                 )
-                                inSelectMode = true
+                                openContextMenu = true
                             }
                         }
                     }
@@ -138,6 +151,7 @@ actual fun FilesGrid(
             val loadingMouseIcon =
                 remember { PointerIcon(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)) }
             var isLoading by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
 
             LaunchedEffect(isLoading) {
                 if (isLoading) {
@@ -152,21 +166,25 @@ actual fun FilesGrid(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
                     .pointerHoverIcon(if (isLoading) loadingMouseIcon else defaultMouseIcon)
-                    .focusable()
-                    .focusRequester(focusRequester)
                     .onKeyEvent {
                         val ctrlPressed = it.isCtrlPressed && it.type == KeyEventType.KeyDown
                         val shiftPressed = it.isShiftPressed && it.type == KeyEventType.KeyDown
                         val keyAPressed = it.key == Key.A && it.type == KeyEventType.KeyDown
 
                         selectionMode = when {
-                            ctrlPressed && keyAPressed -> SelectionMode.All
+                            ctrlPressed && keyAPressed -> {
+                                selectedFiles.addAll(files)
+                                SelectionMode.All
+                            }
+
                             ctrlPressed -> SelectionMode.Single
                             shiftPressed -> SelectionMode.Range
                             else -> null
                         }
                         selectionMode != null
                     }
+                    .focusable()
+                    .focusRequester(focusRequester)
             ) {
                 items(count = files.size) { index ->
                     val file = files[index]
@@ -204,28 +222,28 @@ actual fun FilesGrid(
                                             }
                                         }
 
-                                        SelectionMode.All -> {
-                                            selectedFiles.addAll(files)
-                                        }
+                                        SelectionMode.All -> {} // Ctrl+A+Click does nothing
 
                                         null -> {
                                             selectedFiles.clear()
-                                            if (file.isDirectory) {
+                                            if (file.isDirectory()) {
                                                 sharedViewModel.changeWorkingDir(file)
                                             } else {
                                                 isLoading = true
-                                                openDocument(file)
+                                                scope.launch {
+                                                    FileOperations.open(file)
+                                                }
                                             }
                                         }
                                     }
-                                }
+                                },
                             )
                             .onClick(
                                 // Right click to display context menu
                                 matcher = PointerMatcher.mouse(PointerButton.Secondary),
                                 onClick = {
                                     selectedFiles.add(file)
-                                    inSelectMode = true
+                                    openContextMenu = true
                                 }
                             ),
                     )
@@ -233,29 +251,55 @@ actual fun FilesGrid(
             }
         }
 
-        var inDeleteMode by remember { mutableStateOf(false) }
+        var displayDeleteDialog by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         val onDismissRequest = {
-            inDeleteMode = false
-            inSelectMode = false
+            displayDeleteDialog = false
+            openContextMenu = false
+            selectedFiles.clear()
         }
 
-        if (inDeleteMode) {
+        if (displayDeleteDialog) {
             ConfirmationDialog(
                 title = "Are you sure you want to delete this file?",
                 subtitle = "This action is irreversible",
                 onDismissRequest = onDismissRequest,
                 onDecline = onDismissRequest,
                 onAccept = {
+                    // Copying selected files into its own variable to avoid
+                    // the list being cleared by on-dismiss before its values are used
+                    val filesToBeDeleted = selectedFiles.toList()
                     scope.launch {
-                        sharedViewModel.delete(selectedFiles)
+                        sharedViewModel.delete(filesToBeDeleted)
                     }
                     onDismissRequest()
                 }
             )
         }
 
-        ContextMenu(
+        var displayRenameDialog by remember { mutableStateOf(false) }
+        if (displayRenameDialog && selectedFiles.isNotEmpty()) {
+            val file = remember { selectedFiles.first() }
+
+            RenameFileDialog(
+                file = file,
+                onDismissRequest = {
+                    displayRenameDialog = false
+                    onDismissRequest()
+                },
+                onAccept = { newFilename ->
+                    scope.launch {
+                        sharedViewModel.rename(file, newFilename)
+                    }
+                },
+                onDecline = {
+                    displayRenameDialog = false
+                    onDismissRequest()
+                }
+            )
+        }
+
+        Popup(
             popupPositionProvider = object : PopupPositionProvider {
                 override fun calculatePosition(
                     anchorBounds: IntRect,
@@ -266,17 +310,22 @@ actual fun FilesGrid(
                     return mouseOffset
                 }
             },
-            expanded = inSelectMode,
-            onDismissRequest = {
-                inSelectMode = false
-                selectedFiles.clear()
-            },
-            onDeleteRequest = {
-                inDeleteMode = true
-            },
-            selectedFiles = selectedFiles,
-            sharedViewModel = sharedViewModel,
-        )
+            onDismissRequest = onDismissRequest,
+        ) {
+            ContextMenu(
+                expanded = openContextMenu,
+
+                selectedFiles = selectedFiles,
+                sharedViewModel = sharedViewModel,
+                onDismissRequest = onDismissRequest,
+                onDeleteFiles = {
+                    displayDeleteDialog = true
+                },
+                onRenameFiles = {
+                    displayRenameDialog = true
+                }
+            )
+        }
     }
 }
 
@@ -284,7 +333,7 @@ actual fun FilesGrid(
 actual fun FileItemCard(
     file: DirEntry,
     modifier: Modifier,
-    isSelected: Boolean
+    isSelected: Boolean,
 ) {
     val localInteractionSource = remember { MutableInteractionSource() }
     val isHovered by localInteractionSource.collectIsHoveredAsState()
@@ -305,7 +354,7 @@ actual fun FileItemCard(
                 .padding(12.dp),
         ) {
             Image(
-                painter = painterResource(file.fileType.icon),
+                painter = painterResource(getFileIcon(file.fileType)),
                 contentDescription = null,
                 modifier = Modifier.size(48.dp)
             )
@@ -313,6 +362,7 @@ actual fun FileItemCard(
             Text(
                 file.name,
                 style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
                 color = if (isSelected) {

@@ -3,8 +3,6 @@ package org.example.project.data
 import java.io.File
 
 actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEntry> {
-    println("Listing dir entries in $path")
-
     val file = File(path)
     if (!file.exists()) {
         println("File $path does not exist")

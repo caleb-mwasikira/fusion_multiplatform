@@ -5,6 +5,7 @@ import android.provider.DocumentsContract
 import android.util.Log
 import org.example.project.ContextProvider
 import org.example.project.MainActivity
+import org.example.project.MainActivity.Companion.TAG
 
 actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEntry> {
     try {
@@ -34,14 +35,19 @@ actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEnt
 
         val dirEntries = mutableListOf<DirEntry>()
         val context = ContextProvider.get()
-        val cursor = context.contentResolver.query(childrenUri, projection, null, null, null)
-        cursor?.use {
-            while (it.moveToNext()) {
-                val childDocumentId = it.getString(0)
-                val name = it.getString(1)
-                val mime = it.getString(2)
-                val size = it.getString(3)
-                val lastModified = it.getString(4)
+        context.contentResolver.query(
+            childrenUri,
+            projection,
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val childDocumentId = cursor.getString(0)
+                val name = cursor.getString(1)
+                val mime = cursor.getString(2)
+                val size = cursor.getString(3)
+                val lastModified = cursor.getString(4)
 
                 if (ignoreHiddenFiles && name.isHiddenFile()) {
                     println("Ignored hidden file $path")
@@ -56,12 +62,10 @@ actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEnt
                 val dirEntry = DirEntry(
                     name = name,
                     path = childUri.toString(),
-                    isDirectory = isDirectory,
                     size = size.toLongOrNull() ?: 0L,
                     lastModified = lastModified.toLongOrNull() ?: 0L,
                     permissions = FilePermissions(),
                     fileType = getFileType(isDirectory, extension),
-                    mime = mime,
                 )
                 dirEntries.add(dirEntry)
             }
@@ -75,22 +79,48 @@ actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEnt
 
 fun getDocumentUri(path: String): Uri? {
     return try {
-        val parentUri = Uri.parse(path)
-        val parentId = when {
-            parentUri.path?.contains("/document/") == true -> {
-                DocumentsContract.getDocumentId(parentUri)
+        val documentUri = Uri.parse(path)
+        val documentId = when {
+            documentUri.path?.contains("/document/") == true -> {
+                DocumentsContract.getDocumentId(documentUri)
             }
 
-            parentUri.path?.contains("/tree/") == true -> {
-                DocumentsContract.getTreeDocumentId(parentUri)
+            documentUri.path?.contains("/tree/") == true -> {
+                DocumentsContract.getTreeDocumentId(documentUri)
             }
 
             else -> {
                 return null
             }
         }
-        DocumentsContract.buildDocumentUriUsingTree(parentUri, parentId)
+        DocumentsContract.buildDocumentUriUsingTree(documentUri, documentId)
     } catch (e: Exception) {
+        Log.e(TAG, "Error acquiring document uri; ${e.message}")
+        null
+    }
+}
+
+fun getParentUri(uri: Uri): Uri? {
+    return try {
+        val documentId = when {
+            uri.path?.contains("/document/") == true -> {
+                DocumentsContract.getDocumentId(uri)
+            }
+
+            uri.path?.contains("/tree/") == true -> {
+                DocumentsContract.getTreeDocumentId(uri)
+            }
+
+            else -> {
+                return null
+            }
+        }
+
+        val parentDocumentId = documentId.substringBeforeLast("/")
+        DocumentsContract.buildDocumentUriUsingTree(uri, parentDocumentId)
+
+    } catch (e: Exception) {
+        Log.e(TAG, "Error acquiring parent uri; ${e.message}")
         null
     }
 }
@@ -104,16 +134,21 @@ actual fun getDirEntry(path: String): DirEntry? {
             DocumentsContract.Document.COLUMN_SIZE,
             DocumentsContract.Document.COLUMN_LAST_MODIFIED,
         )
-        val context = ContextProvider.get()
-        val cursor = context.contentResolver.query(uri, projection, null, null, null)
 
         var dirEntry: DirEntry? = null
-        cursor?.let {
-            if (it.moveToFirst()) {
-                val name = it.getString(0)
-                val mime = it.getString(1)
-                val size = it.getString(2)
-                val lastModified = it.getString(3)
+        val context = ContextProvider.get()
+        context.contentResolver.query(
+            uri,
+            projection,
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val name = cursor.getString(0)
+                val mime = cursor.getString(1)
+                val size = cursor.getString(2)
+                val lastModified = cursor.getString(3)
 
                 val isDirectory = mime == DocumentsContract.Document.MIME_TYPE_DIR
                 val extension = mime.substringAfterLast("/")
@@ -121,19 +156,18 @@ actual fun getDirEntry(path: String): DirEntry? {
                 dirEntry = DirEntry(
                     name = name,
                     path = uri.toString(),
-                    isDirectory = isDirectory,
                     size = size.toLongOrNull() ?: 0L,
                     lastModified = lastModified.toLongOrNull() ?: 0L,
                     permissions = FilePermissions(),
                     fileType = getFileType(isDirectory, extension),
-                    mime = mime,
                 )
             }
         }
+
         dirEntry
 
     } catch (e: Exception) {
-        Log.e(MainActivity.TAG, "Error converting path into DirEntry; ${e.message}")
+        Log.e(TAG, "Error converting path into DirEntry; ${e.message}")
         null
     }
 }
