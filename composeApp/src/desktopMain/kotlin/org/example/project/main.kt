@@ -9,7 +9,6 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.launch
 import org.example.project.data.SharedViewModel
-import org.example.project.data.startFileSyncServer
 import org.example.project.widgets.getWindowSizeClass
 import javax.swing.JFileChooser
 import javax.swing.JFrame
@@ -40,7 +39,7 @@ fun main() = application {
     val coroutineScope = rememberCoroutineScope()
 
     coroutineScope.launch {
-        startFileSyncServer()
+        // TODO: Start file sync server
     }
 
     val windowState = rememberWindowState(

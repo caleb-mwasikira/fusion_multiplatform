@@ -1,5 +1,6 @@
-package org.example.project.data
+package org.example.project.dto
 
+import org.example.project.data.Stack
 import java.io.File
 import java.time.Instant
 import java.time.LocalDateTime

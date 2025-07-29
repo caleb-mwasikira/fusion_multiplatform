@@ -2,14 +2,7 @@ package org.example.project.data
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshotFlow
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.get
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +17,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.example.project.dto.Device
+import org.example.project.dto.DirEntry
+import org.example.project.dto.FileType
+import org.example.project.dto.getDirEntry
+import org.example.project.dto.isHiddenFile
+import org.example.project.dto.listDirEntries
+import org.example.project.dto.listDirEntriesRecursive
 import kotlin.io.path.Path
 
 sealed class UIMessages {
@@ -208,7 +208,7 @@ class SharedViewModel {
         _clipboardAction.value = action
     }
 
-    suspend fun pasteFiles() {
+    suspend fun paste() {
         if (!_isOkayToPaste.value) {
             _uiMessages.emit(
                 UIMessages.Error("Paste action currently not permitted")
@@ -275,60 +275,6 @@ class SharedViewModel {
             _currentFiles.value = foundFiles
         }
 
-    suspend fun trackNewDevice(device: Device) = withContext(Dispatchers.IO) {
-        val ok = LocalStore.trackNewDevice(device)
-        if (!ok) {
-            _uiMessages.emit(
-                UIMessages.Error("Unexpected error syncing with device")
-            )
-            return@withContext
-        }
-        _trackedDevices.value = LocalStore.getTrackedDevices()
-    }
-
-    suspend fun getOnlineDevices() = withContext(Dispatchers.IO) {
-        _uiMessages.emit(
-            UIMessages.Info("Searching for devices within your local network")
-        )
-        val networkDevices = Network.getNetworkDevices()
-        if (networkDevices.isEmpty()) {
-            _uiMessages.emit(
-                UIMessages.Info("No devices found within your local network")
-            )
-            return@withContext
-        }
-
-        val client = HttpClient(CIO) {
-            install(ContentNegotiation) {
-                json()
-            }
-        }
-        val onlineDevicesDeferred = networkDevices.map { networkDevice ->
-            val result: Deferred<Device?> = async(Dispatchers.IO) {
-                try {
-                    println("Connecting to network device $networkDevice...")
-                    val response = client.get("http://$networkDevice:8080/")
-                    val device: Device = response.body()
-                    println("Connected to device $networkDevice")
-                    return@async device
-
-                } catch (e: Exception) {
-                    println("Error connecting to network device $networkDevice; ${e.message}")
-                    return@async null
-                }
-            }
-            return@map result
-        }
-        val onlineDevices = onlineDevicesDeferred.awaitAll().filterNotNull()
-        if (onlineDevices.isEmpty()) {
-            _uiMessages.emit(
-                UIMessages.Error("No connected devices found")
-            )
-        }
-        _onlineDevices.value = onlineDevices
-        return@withContext
-    }
-
     suspend fun createNewFile(isDirectory: Boolean) = withContext(Dispatchers.IO) {
         if (_workingDir.value == null) {
             _uiMessages.emit(
@@ -358,5 +304,33 @@ class SharedViewModel {
             return@withContext
         }
         refreshCurrentDir()
+    }
+
+    suspend fun trackNewDevice(device: Device) = withContext(Dispatchers.IO) {
+        val ok = LocalStore.trackNewDevice(device)
+        if (!ok) {
+            _uiMessages.emit(
+                UIMessages.Error("Unexpected error saving device to storage")
+            )
+            return@withContext
+        }
+        _trackedDevices.value = LocalStore.getTrackedDevices()
+    }
+
+    suspend fun getOnlineDevices() = withContext(Dispatchers.IO) {
+        _uiMessages.emit(
+            UIMessages.Info("Searching for devices within your local network")
+        )
+        val networkDevices = Network.getNetworkDevices()
+        if (networkDevices.isEmpty()) {
+            _uiMessages.emit(
+                UIMessages.Info("No devices found within your local network")
+            )
+            return@withContext
+        }
+
+        // TODO: Check if there are any devices on the local network
+        //  running a file sync server
+        return@withContext
     }
 }

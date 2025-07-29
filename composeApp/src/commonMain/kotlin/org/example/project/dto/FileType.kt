@@ -1,4 +1,4 @@
-package org.example.project.data
+package org.example.project.dto
 
 import minio_multiplatform.composeapp.generated.resources.Res
 import minio_multiplatform.composeapp.generated.resources.audio_file

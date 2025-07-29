@@ -10,7 +10,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import org.example.project.data.SharedViewModel
-import org.example.project.data.startFileSyncServer
 import org.example.project.widgets.getWindowSizeClass
 
 class MainActivity : ComponentActivity() {
@@ -41,7 +40,7 @@ class MainActivity : ComponentActivity() {
         }
 
         lifecycleScope.launch {
-            startFileSyncServer()
+            // TODO: Start file sync server
         }
 
         setContent {

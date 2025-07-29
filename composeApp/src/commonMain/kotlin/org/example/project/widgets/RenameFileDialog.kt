@@ -28,8 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import org.example.project.data.DirEntry
-import org.example.project.data.isDirectory
+import org.example.project.dto.DirEntry
+import org.example.project.dto.isDirectory
 
 @Composable
 fun RenameFileDialog(

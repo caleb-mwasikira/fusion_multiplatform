@@ -2,6 +2,8 @@ package org.example.project.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.example.project.dto.DirEntry
+import org.example.project.dto.isFile
 import java.awt.Desktop
 import java.io.File
 import java.io.IOException

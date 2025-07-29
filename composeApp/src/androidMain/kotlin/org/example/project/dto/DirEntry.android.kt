@@ -1,4 +1,4 @@
-package org.example.project.data
+package org.example.project.dto
 
 import android.net.Uri
 import android.provider.DocumentsContract

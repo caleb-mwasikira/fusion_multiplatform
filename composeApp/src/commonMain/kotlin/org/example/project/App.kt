@@ -37,6 +37,7 @@ fun MobileScreen(
                 modifier = Modifier.width(400.dp)
             ) {
                 SidePanel(
+                    sharedViewModel = sharedViewModel,
                     modifier = Modifier.fillMaxHeight()
                         .padding(8.dp),
                     onUploadDirectory = {
@@ -80,6 +81,7 @@ fun DesktopScreen(
                 .padding(innerPadding)
         ) {
             SidePanel(
+                sharedViewModel = sharedViewModel,
                 modifier = Modifier.fillMaxHeight()
                     .width(400.dp)
                     .background(

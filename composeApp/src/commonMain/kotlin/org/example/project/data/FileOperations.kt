@@ -1,5 +1,6 @@
 package org.example.project.data
 
+import org.example.project.dto.DirEntry
 import java.io.File
 
 enum class ClipboardAction {

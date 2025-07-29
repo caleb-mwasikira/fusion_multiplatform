@@ -6,6 +6,13 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import minio_multiplatform.composeapp.generated.resources.Res
+import minio_multiplatform.composeapp.generated.resources.poppins_bold
+import minio_multiplatform.composeapp.generated.resources.poppins_regular
+import minio_multiplatform.composeapp.generated.resources.poppins_semibold
+import org.jetbrains.compose.resources.Font
 
 private val lightScheme = lightColorScheme(
     primary = primaryLight,
@@ -93,9 +100,35 @@ fun AppTheme(
         else -> lightScheme
     }
 
+    val poppins = FontFamily(
+        Font(Res.font.poppins_regular),
+        Font(Res.font.poppins_semibold, FontWeight.SemiBold),
+        Font(Res.font.poppins_bold, FontWeight.Bold),
+    )
+
+    // Default Material 3 typography values
+    val baseline = Typography()
+    val appTypography = Typography(
+        displayLarge = baseline.displayLarge.copy(fontFamily = poppins),
+        displayMedium = baseline.displayMedium.copy(fontFamily = poppins),
+        displaySmall = baseline.displaySmall.copy(fontFamily = poppins),
+        headlineLarge = baseline.headlineLarge.copy(fontFamily = poppins),
+        headlineMedium = baseline.headlineMedium.copy(fontFamily = poppins),
+        headlineSmall = baseline.headlineSmall.copy(fontFamily = poppins),
+        titleLarge = baseline.titleLarge.copy(fontFamily = poppins),
+        titleMedium = baseline.titleMedium.copy(fontFamily = poppins),
+        titleSmall = baseline.titleSmall.copy(fontFamily = poppins),
+        bodyLarge = baseline.bodyLarge.copy(fontFamily = poppins),
+        bodyMedium = baseline.bodyMedium.copy(fontFamily = poppins),
+        bodySmall = baseline.bodySmall.copy(fontFamily = poppins),
+        labelLarge = baseline.labelLarge.copy(fontFamily = poppins),
+        labelMedium = baseline.labelMedium.copy(fontFamily = poppins),
+        labelSmall = baseline.labelSmall.copy(fontFamily = poppins),
+    )
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography(),
+        typography = appTypography,
         content = content
     )
 }

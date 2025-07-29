@@ -2,7 +2,7 @@ package org.example.project.widgets
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import org.example.project.data.DirEntry
+import org.example.project.dto.DirEntry
 import org.example.project.data.SharedViewModel
 
 @Composable

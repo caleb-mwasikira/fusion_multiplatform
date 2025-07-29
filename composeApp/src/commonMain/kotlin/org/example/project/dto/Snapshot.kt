@@ -1,4 +1,4 @@
-package org.example.project.data
+package org.example.project.dto
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -8,6 +8,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import org.example.project.data.Stack
 
 @Serializable
 data class Snapshot(

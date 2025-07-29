@@ -8,6 +8,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.example.project.ContextProvider
 import org.example.project.MainActivity.Companion.TAG
+import org.example.project.dto.DirEntry
+import org.example.project.dto.getDocumentUri
+import org.example.project.dto.getParentUri
+import org.example.project.dto.isDirectory
+import org.example.project.dto.isFile
+import org.example.project.dto.listDirEntries
 import java.io.File
 import java.io.IOException
 
