@@ -61,9 +61,9 @@ import minio_multiplatform.composeapp.generated.resources.search_24dp
 import minio_multiplatform.composeapp.generated.resources.send_24dp
 import minio_multiplatform.composeapp.generated.resources.visibility_24dp
 import minio_multiplatform.composeapp.generated.resources.visibility_off_24dp
-import org.example.project.dto.FileType
 import org.example.project.data.SharedViewModel
 import org.example.project.data.UIMessages
+import org.example.project.dto.FileType
 import org.example.project.dto.getFileIcon
 import org.example.project.widgets.AddNewDeviceDialog
 import org.example.project.widgets.DeviceCardExpanded

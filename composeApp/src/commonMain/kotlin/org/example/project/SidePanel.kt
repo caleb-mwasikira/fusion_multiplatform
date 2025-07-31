@@ -54,7 +54,9 @@ fun SidePanel(
         modifier = modifier,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp)
+        ) {
             Column {
                 Text(
                     "Connected Devices",
@@ -80,8 +82,9 @@ fun SidePanel(
                 }
             }
 
+            Spacer(modifier = Modifier.height(64.dp))
+
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 MenuItem(

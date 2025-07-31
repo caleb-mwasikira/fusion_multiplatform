@@ -34,9 +34,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import minio_multiplatform.composeapp.generated.resources.Res
 import minio_multiplatform.composeapp.generated.resources.content_empty
-import org.example.project.dto.DirEntry
 import org.example.project.data.FileOperations
 import org.example.project.data.SharedViewModel
+import org.example.project.dto.DirEntry
 import org.example.project.dto.formatTimeMillis
 import org.example.project.dto.getFileIcon
 import org.example.project.dto.isDirectory

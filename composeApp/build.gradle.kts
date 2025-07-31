@@ -108,3 +108,18 @@ compose.desktop {
         }
     }
 }
+
+tasks.register<Exec>(name = "buildGoBinary") {
+    executable = "go"
+    workingDir = File("/home/german/Work/golang/projects/fusion/")
+    setArgs(
+        listOf(
+            "build",
+            "-o",
+            "/home/german/Work/projects/minio/minio_multiplatform/composeApp/src/main/res/go-fuse-client",
+            "./client"
+        )
+    )
+    standardOutput = System.out
+    errorOutput = System.err
+}

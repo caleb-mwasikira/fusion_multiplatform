@@ -41,8 +41,8 @@ import minio_multiplatform.composeapp.generated.resources.create_new_folder_24dp
 import minio_multiplatform.composeapp.generated.resources.delete_24dp
 import minio_multiplatform.composeapp.generated.resources.more_horiz_24dp
 import org.example.project.data.ClipboardAction
-import org.example.project.dto.DirEntry
 import org.example.project.data.SharedViewModel
+import org.example.project.dto.DirEntry
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 

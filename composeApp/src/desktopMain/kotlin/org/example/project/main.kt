@@ -7,9 +7,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import minio_multiplatform.composeapp.generated.resources.Res
 import org.example.project.data.SharedViewModel
 import org.example.project.widgets.getWindowSizeClass
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
 import javax.swing.JFileChooser
 import javax.swing.JFrame
 
@@ -35,11 +41,56 @@ fun selectDirectory(): String? {
     }
 }
 
+@OptIn(DelicateCoroutinesApi::class)
+suspend fun runBundledFuseClient() {
+    try {
+        val binaryFile = File.createTempFile("fuse-client", null).apply {
+            deleteOnExit()
+            outputStream().use { outputStream ->
+                val bytes = Res.readBytes("files/go-fuse-client")
+                outputStream.write(bytes)
+            }
+            setExecutable(true)
+        }
+        val command = listOf(binaryFile.absolutePath, "-realpath", "/home/german/Public", "--debug")
+        println("[RUN] command ${command.joinToString(" ")}")
+
+        val process = ProcessBuilder(command)
+            .redirectErrorStream(true)
+            .start()
+        Runtime.getRuntime().addShutdownHook(Thread {
+            process.destroy()
+        })
+
+        // Launch a coroutine to read from stdout
+        GlobalScope.launch {
+            BufferedReader(InputStreamReader(process.inputStream)).useLines { lines ->
+                lines.forEach {
+                    println("[STDOUT]: $it")
+                }
+            }
+        }
+
+        // Launch a coroutine to read from stderr
+        GlobalScope.launch {
+            BufferedReader(InputStreamReader(process.errorStream)).useLines { lines ->
+                lines.forEach {
+                    System.err.println("[STDERR]: $it")
+                }
+            }
+        }
+
+        process.waitFor()
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
 fun main() = application {
     val coroutineScope = rememberCoroutineScope()
 
     coroutineScope.launch {
-        // TODO: Start file sync server
+        runBundledFuseClient()
     }
 
     val windowState = rememberWindowState(
