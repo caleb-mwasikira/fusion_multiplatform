@@ -111,12 +111,12 @@ compose.desktop {
 
 tasks.register<Exec>(name = "buildGoBinary") {
     executable = "go"
-    workingDir = File("/home/german/Work/golang/projects/fusion/")
+    workingDir = File("/home/german/Work/projects/fusion/fusion")
     setArgs(
         listOf(
             "build",
             "-o",
-            "/home/german/Work/projects/minio/minio_multiplatform/composeApp/src/main/res/go-fuse-client",
+            "/home/german/Work/projects/fusion/fusion_multiplatform/composeApp/src/main/res/go-fuse-client",
             "./client"
         )
     )

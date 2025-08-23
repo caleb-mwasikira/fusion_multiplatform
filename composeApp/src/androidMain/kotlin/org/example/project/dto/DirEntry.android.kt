@@ -3,7 +3,6 @@ package org.example.project.dto
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
-import org.example.project.ContextProvider
 import org.example.project.MainActivity
 import org.example.project.MainActivity.Companion.TAG
 
@@ -34,7 +33,7 @@ actual fun listDirEntries(path: String, ignoreHiddenFiles: Boolean): List<DirEnt
         )
 
         val dirEntries = mutableListOf<DirEntry>()
-        val context = ContextProvider.get()
+        val context = MainActivity.instance.applicationContext
         context.contentResolver.query(
             childrenUri,
             projection,
@@ -136,7 +135,7 @@ actual fun getDirEntry(path: String): DirEntry? {
         )
 
         var dirEntry: DirEntry? = null
-        val context = ContextProvider.get()
+        val context = MainActivity.instance.applicationContext
         context.contentResolver.query(
             uri,
             projection,

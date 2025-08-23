@@ -15,12 +15,15 @@ import org.example.project.widgets.getWindowSizeClass
 class MainActivity : ComponentActivity() {
     companion object {
         const val TAG: String = "MainActivity"
+
+        lateinit var instance: MainActivity
+            private set
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
 
-        ContextProvider.init(this)
         val sharedViewModel = SharedViewModel()
 
         val selectDirectoryLauncher = registerForActivityResult(

@@ -6,7 +6,7 @@ import android.provider.DocumentsContract
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.example.project.ContextProvider
+import org.example.project.MainActivity
 import org.example.project.MainActivity.Companion.TAG
 import org.example.project.dto.DirEntry
 import org.example.project.dto.getDocumentUri
@@ -43,7 +43,8 @@ actual object FileOperations {
         val stack = Stack<DirEntry>()
         stack.pushMany(*files.toTypedArray())
 
-        val contentResolver = ContextProvider.get().contentResolver
+        val context = MainActivity.instance.applicationContext
+        val contentResolver = context.contentResolver
 
         while (stack.isNotEmpty()) {
             val file =
@@ -102,7 +103,8 @@ actual object FileOperations {
         val stack = Stack<DirEntry>()
         stack.pushMany(*files.toTypedArray())
 
-        val contentResolver = ContextProvider.get().contentResolver
+        val context = MainActivity.instance.applicationContext
+        val contentResolver = context.contentResolver
 
         while (stack.isNotEmpty()) {
             val file =
@@ -131,7 +133,7 @@ actual object FileOperations {
     actual suspend fun rename(file: DirEntry, newFilename: String): Boolean =
         withContext(Dispatchers.IO) {
             return@withContext try {
-                val context = ContextProvider.get()
+                val context = MainActivity.instance.applicationContext
                 val documentUri = getDocumentUri(file.path) ?: return@withContext false
 
                 DocumentsContract.renameDocument(
@@ -148,7 +150,8 @@ actual object FileOperations {
         }
 
     actual suspend fun delete(files: List<DirEntry>): List<FileError> {
-        val contentResolver = ContextProvider.get().contentResolver
+        val context = MainActivity.instance.applicationContext
+        val contentResolver = context.contentResolver
         val fileErrors = mutableListOf<FileError>()
 
         for (file in files) {
@@ -170,7 +173,7 @@ actual object FileOperations {
 
     actual fun createInternalFile(filename: String): File? {
         return try {
-            val context = ContextProvider.get()
+            val context = MainActivity.instance.applicationContext
             val file = File(context.filesDir, filename)
             if (!file.exists()) {
                 file.createNewFile()
@@ -189,7 +192,7 @@ actual object FileOperations {
     ): Boolean =
         withContext(Dispatchers.IO) {
             return@withContext try {
-                val context = ContextProvider.get()
+                val context = MainActivity.instance.applicationContext
                 val targetUri = getDocumentUri(targetDir) ?: return@withContext false
 
                 DocumentsContract.createDocument(
@@ -209,7 +212,7 @@ actual object FileOperations {
      * Opens a document for viewing within the running platform
      */
     actual suspend fun open(doc: DirEntry): Unit = withContext(Dispatchers.IO) {
-        val context = ContextProvider.get()
+        val context = MainActivity.instance.applicationContext
         val uri = Uri.parse(doc.path)
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndTypeAndNormalize(uri, doc.fileType.mime)

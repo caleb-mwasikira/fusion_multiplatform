@@ -52,7 +52,12 @@ suspend fun runBundledFuseClient() {
             }
             setExecutable(true)
         }
-        val command = listOf(binaryFile.absolutePath, "-realpath", "/home/german/Public", "--debug")
+        val userHomeDir = System.getProperty("user.home")
+        val command = listOf(
+            binaryFile.absolutePath,
+            "-realpath", "$userHomeDir/Public",
+            "--debug"
+        )
         println("[RUN] command ${command.joinToString(" ")}")
 
         val process = ProcessBuilder(command)
