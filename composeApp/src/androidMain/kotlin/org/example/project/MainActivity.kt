@@ -10,7 +10,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import org.example.project.data.SharedViewModel
-import org.example.project.widgets.getWindowSizeClass
+import org.example.project.screens.App
+import org.example.project.screens.widgets.getWindowSizeClass
 
 class MainActivity : ComponentActivity() {
     companion object {

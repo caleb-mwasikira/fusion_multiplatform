@@ -1,4 +1,4 @@
-package org.example.project.widgets
+package org.example.project.screens.widgets
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
@@ -40,6 +40,10 @@ import org.example.project.dto.DirEntry
 import org.example.project.dto.formatTimeMillis
 import org.example.project.dto.getFileIcon
 import org.example.project.dto.isDirectory
+import org.example.project.screens.widgets.ConfirmationDialog
+import org.example.project.screens.widgets.ContextMenu
+import org.example.project.screens.widgets.FileItemCard
+import org.example.project.screens.widgets.RenameFileDialog
 import org.jetbrains.compose.resources.painterResource
 
 @Composable

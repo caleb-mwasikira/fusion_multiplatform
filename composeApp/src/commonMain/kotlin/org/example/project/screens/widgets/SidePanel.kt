@@ -1,4 +1,4 @@
-package org.example.project
+package org.example.project.screens.widgets
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,7 +40,6 @@ import minio_multiplatform.composeapp.generated.resources.manage_history_24dp
 import minio_multiplatform.composeapp.generated.resources.share_24dp
 import minio_multiplatform.composeapp.generated.resources.star_24dp
 import org.example.project.data.SharedViewModel
-import org.example.project.widgets.DeviceCard
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 

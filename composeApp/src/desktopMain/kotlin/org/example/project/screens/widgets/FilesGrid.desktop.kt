@@ -1,4 +1,4 @@
-package org.example.project.widgets
+package org.example.project.screens.widgets
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -66,12 +66,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import minio_multiplatform.composeapp.generated.resources.Res
 import minio_multiplatform.composeapp.generated.resources.content_empty
-import org.example.project.SelectionMode
 import org.example.project.data.FileOperations
 import org.example.project.data.SharedViewModel
 import org.example.project.dto.DirEntry
 import org.example.project.dto.getFileIcon
 import org.example.project.dto.isDirectory
+import org.example.project.screens.widgets.ConfirmationDialog
+import org.example.project.screens.widgets.ContextMenu
+import org.example.project.screens.widgets.FileItemCard
+import org.example.project.screens.widgets.RenameFileDialog
+import org.example.project.screens.widgets.SelectionMode
 import org.jetbrains.compose.resources.painterResource
 import java.awt.Cursor
 

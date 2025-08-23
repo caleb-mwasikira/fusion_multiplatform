@@ -1,4 +1,4 @@
-package org.example.project
+package org.example.project.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.example.project.data.SharedViewModel
 import org.example.project.theme.AppTheme
-import org.example.project.widgets.WindowSizeClass
+import org.example.project.screens.widgets.MainPanel
+import org.example.project.screens.widgets.SidePanel
+import org.example.project.screens.widgets.WindowSizeClass
 
 @Composable
 fun MobileScreen(

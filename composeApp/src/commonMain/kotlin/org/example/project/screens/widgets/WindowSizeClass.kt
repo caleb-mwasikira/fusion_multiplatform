@@ -1,4 +1,4 @@
-package org.example.project.widgets
+package org.example.project.screens.widgets
 
 import androidx.compose.runtime.Composable
 

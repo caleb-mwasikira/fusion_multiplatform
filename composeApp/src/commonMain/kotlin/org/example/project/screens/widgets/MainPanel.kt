@@ -1,4 +1,4 @@
-package org.example.project
+package org.example.project.screens.widgets
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
@@ -65,9 +65,6 @@ import org.example.project.data.SharedViewModel
 import org.example.project.data.UIMessages
 import org.example.project.dto.FileType
 import org.example.project.dto.getFileIcon
-import org.example.project.widgets.AddNewDeviceDialog
-import org.example.project.widgets.DeviceCardExpanded
-import org.example.project.widgets.FilesGrid
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import java.util.Locale

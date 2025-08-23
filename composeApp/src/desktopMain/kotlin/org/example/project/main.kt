@@ -8,11 +8,13 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import minio_multiplatform.composeapp.generated.resources.Res
 import org.example.project.data.SharedViewModel
-import org.example.project.widgets.getWindowSizeClass
+import org.example.project.screens.App
+import org.example.project.screens.widgets.getWindowSizeClass
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -55,7 +57,7 @@ suspend fun runBundledFuseClient() {
         val userHomeDir = System.getProperty("user.home")
         val command = listOf(
             binaryFile.absolutePath,
-            "-realpath", "$userHomeDir/Public",
+            "-realpath", "$userHomeDir/Desktop/Client",
             "--debug"
         )
         println("[RUN] command ${command.joinToString(" ")}")
@@ -94,7 +96,8 @@ suspend fun runBundledFuseClient() {
 fun main() = application {
     val coroutineScope = rememberCoroutineScope()
 
-    coroutineScope.launch {
+    // Run bundled FUSE client on background thread
+    coroutineScope.launch(Dispatchers.Default) {
         runBundledFuseClient()
     }
 

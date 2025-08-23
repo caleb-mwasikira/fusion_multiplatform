@@ -1,4 +1,4 @@
-package org.example.project
+package org.example.project.screens.widgets
 
 enum class SelectionMode {
     Single, // Ctrl key pressed down
