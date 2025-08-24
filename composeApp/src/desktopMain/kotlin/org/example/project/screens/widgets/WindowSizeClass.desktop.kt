@@ -3,7 +3,6 @@ package org.example.project.screens.widgets
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import org.example.project.screens.widgets.WindowSizeClass
 
 @Composable
 actual fun getWindowSizeClass(widthPx: Float?): WindowSizeClass {

@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import org.example.project.data.SharedViewModel
+import org.example.project.data.AppViewModel
 import org.example.project.screens.App
 import org.example.project.screens.widgets.getWindowSizeClass
 
@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         instance = this
 
-        val sharedViewModel = SharedViewModel()
+        val appViewModel = AppViewModel()
 
         val selectDirectoryLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                     )
-                    sharedViewModel.trackNewDir(uri.toString())
+                    appViewModel.trackNewDir(uri.toString())
                 }
             }
         }
@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 windowSizeClass = getWindowSizeClass(),
-                sharedViewModel = sharedViewModel,
+                appViewModel = appViewModel,
                 onUploadDirectory = {
                     val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                         addFlags(
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
 fun AppAndroidPreview() {
     App(
         windowSizeClass = getWindowSizeClass(),
-        sharedViewModel = SharedViewModel(),
+        appViewModel = AppViewModel(),
         onUploadDirectory = {},
     )
 }

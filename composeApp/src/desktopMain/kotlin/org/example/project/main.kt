@@ -12,7 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import minio_multiplatform.composeapp.generated.resources.Res
-import org.example.project.data.SharedViewModel
+import org.example.project.data.AppViewModel
 import org.example.project.screens.App
 import org.example.project.screens.widgets.getWindowSizeClass
 import java.io.BufferedReader
@@ -96,10 +96,10 @@ suspend fun runBundledFuseClient() {
 fun main() = application {
     val coroutineScope = rememberCoroutineScope()
 
-    // Run bundled FUSE client on background thread
-    coroutineScope.launch(Dispatchers.Default) {
-        runBundledFuseClient()
-    }
+//    // Run bundled FUSE client on background thread
+//    coroutineScope.launch(Dispatchers.Default) {
+//        runBundledFuseClient()
+//    }
 
     val windowState = rememberWindowState(
         size = DpSize(1200.dp, 896.dp),
@@ -111,17 +111,17 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "MinIo",
     ) {
-        val sharedViewModel = remember { SharedViewModel() }
+        val appViewModel = remember { AppViewModel() }
 
         App(
             windowSizeClass = getWindowSizeClass(
                 widthPx = windowState.size.width.value
             ),
-            sharedViewModel = sharedViewModel,
+            appViewModel = appViewModel,
             onUploadDirectory = {
                 val selected = selectDirectory()
                 selected?.let {
-                    sharedViewModel.trackNewDir(it)
+                    appViewModel.trackNewDir(it)
                 }
             }
         )

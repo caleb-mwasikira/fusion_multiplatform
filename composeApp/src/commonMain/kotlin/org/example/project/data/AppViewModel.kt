@@ -1,5 +1,6 @@
 package org.example.project.data
 
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +35,7 @@ sealed class UIMessages {
     data class Warn(override val message: String) : UIMessages()
 }
 
-class SharedViewModel {
+class AppViewModel {
     private val previousDirs = Stack<DirEntry>()
     private val nextDirs = Stack<DirEntry>()
 
@@ -48,10 +49,10 @@ class SharedViewModel {
     val files: StateFlow<List<DirEntry>>
         get() = _filteredFiles.asStateFlow()
 
-    private var _trackedDevices = MutableStateFlow(LocalStore.getTrackedDevices())
-    val trackedDevices = _trackedDevices.asStateFlow()
-    private var _onlineDevices = MutableStateFlow<List<Device>>(emptyList())
-    val onlineDevices = _onlineDevices.asStateFlow()
+    private var _pairedDevices = MutableStateFlow(LocalStore.getTrackedDevices())
+    val pairedDevices = _pairedDevices.asStateFlow()
+    private var _networkDevices = MutableStateFlow<List<Device>>(emptyList())
+    val networkDevices = _networkDevices.asStateFlow()
 
     private var _clipboardFiles = mutableStateListOf<DirEntry>()
     private val _clipboardAction = MutableStateFlow<ClipboardAction?>(null)
@@ -66,7 +67,7 @@ class SharedViewModel {
 
     init {
         viewModelScope.launch {
-            getOnlineDevices()
+            getNetworkDevices()
         }
 
         viewModelScope.launch {
@@ -190,22 +191,34 @@ class SharedViewModel {
         }
     }
 
-    fun copyOrCut(newFiles: List<DirEntry>, action: ClipboardAction) {
+    fun copy(newFiles: List<DirEntry>) {
+        if (newFiles.isEmpty()) return
+
+        viewModelScope.launch {
+            this.launch {
+                _uiMessages.emit(
+                    UIMessages.Info("Copied files into clipboard")
+                )
+            }
+            _clipboardFiles.clear()
+            _clipboardFiles.addAll(newFiles)
+            _clipboardAction.value = ClipboardAction.Copy
+        }
+    }
+
+    fun cut(newFiles: List<DirEntry>) {
         if (newFiles.isEmpty()) return
         viewModelScope.launch {
-            val message = if (action == ClipboardAction.Copy) {
-                "Copied files into clipboard"
-            } else {
-                "Cut files into clipboard"
+            this.launch {
+                _uiMessages.emit(
+                    UIMessages.Info("Cut files into clipboard")
+                )
             }
-            _uiMessages.emit(
-                UIMessages.Info(message)
-            )
-        }
 
-        _clipboardFiles.clear()
-        _clipboardFiles.addAll(newFiles)
-        _clipboardAction.value = action
+            _clipboardFiles.clear()
+            _clipboardFiles.addAll(newFiles)
+            _clipboardAction.value = ClipboardAction.Cut
+        }
     }
 
     suspend fun paste() {
@@ -306,7 +319,7 @@ class SharedViewModel {
         refreshCurrentDir()
     }
 
-    suspend fun trackNewDevice(device: Device) = withContext(Dispatchers.IO) {
+    suspend fun pairWithNewDevice(device: Device) = withContext(Dispatchers.IO) {
         val ok = LocalStore.trackNewDevice(device)
         if (!ok) {
             _uiMessages.emit(
@@ -314,10 +327,10 @@ class SharedViewModel {
             )
             return@withContext
         }
-        _trackedDevices.value = LocalStore.getTrackedDevices()
+        _pairedDevices.value = LocalStore.getTrackedDevices()
     }
 
-    suspend fun getOnlineDevices() = withContext(Dispatchers.IO) {
+    suspend fun getNetworkDevices() = withContext(Dispatchers.IO) {
         _uiMessages.emit(
             UIMessages.Info("Searching for devices within your local network")
         )

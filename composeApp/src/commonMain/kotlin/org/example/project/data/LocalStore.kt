@@ -14,7 +14,7 @@ import kotlin.system.measureTimeMillis
 @Serializable
 data class Store(
     val trackedDirectories: MutableMap<String, List<Snapshot>> = mutableMapOf(),
-    val trackedDevices: MutableSet<Device> = mutableSetOf(),
+    val pairedDevices: MutableSet<Device> = mutableSetOf(),
 )
 
 // Use this to save user preferences and settings persistently across sessions
@@ -89,13 +89,13 @@ object LocalStore {
     }
 
     fun getTrackedDevices(): Set<Device> {
-        return store.trackedDevices
+        return store.pairedDevices
     }
 
     fun trackNewDevice(device: Device): Boolean {
-        val trackedDevices = store.trackedDevices
-        if (trackedDevices.contains(device)) return false
-        store.trackedDevices.add(device)
+        val pairedDevices = store.pairedDevices
+        if (pairedDevices.contains(device)) return false
+        store.pairedDevices.add(device)
         return save()
     }
 }

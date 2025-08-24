@@ -62,7 +62,7 @@ object Network {
             jobs += job
         }
 
-        val onlineDevices = jobs.awaitAll().filterNotNull()
-        return@withContext onlineDevices
+        val networkDevices = jobs.awaitAll().filterNotNull()
+        return@withContext networkDevices
     }
 }

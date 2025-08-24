@@ -3,7 +3,6 @@ package org.example.project.screens.widgets
 import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
-import org.example.project.screens.widgets.WindowSizeClass
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable

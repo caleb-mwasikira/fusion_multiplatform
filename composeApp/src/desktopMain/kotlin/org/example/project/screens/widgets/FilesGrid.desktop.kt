@@ -66,32 +66,27 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import minio_multiplatform.composeapp.generated.resources.Res
 import minio_multiplatform.composeapp.generated.resources.content_empty
+import org.example.project.data.AppViewModel
 import org.example.project.data.FileOperations
-import org.example.project.data.SharedViewModel
 import org.example.project.dto.DirEntry
 import org.example.project.dto.getFileIcon
 import org.example.project.dto.isDirectory
-import org.example.project.screens.widgets.ConfirmationDialog
-import org.example.project.screens.widgets.ContextMenu
-import org.example.project.screens.widgets.FileItemCard
-import org.example.project.screens.widgets.RenameFileDialog
-import org.example.project.screens.widgets.SelectionMode
 import org.jetbrains.compose.resources.painterResource
 import java.awt.Cursor
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 actual fun FilesGrid(
-    sharedViewModel: SharedViewModel,
+    appViewModel: AppViewModel,
 ) {
-    val files by sharedViewModel.files.collectAsState()
     val selectedFiles = remember { mutableStateListOf<DirEntry>() }
     var selectionMode by remember { mutableStateOf<SelectionMode?>(null) }
     var openContextMenu by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
     // Runs every time files changes
-    LaunchedEffect(files) {
+    val files by appViewModel.files.collectAsState()
+    LaunchedEffect(files.hashCode()) {
         focusRequester.requestFocus()
         selectedFiles.clear()
     }
@@ -231,7 +226,7 @@ actual fun FilesGrid(
                                         null -> {
                                             selectedFiles.clear()
                                             if (file.isDirectory()) {
-                                                sharedViewModel.changeWorkingDir(file)
+                                                appViewModel.changeWorkingDir(file)
                                             } else {
                                                 isLoading = true
                                                 scope.launch {
@@ -274,7 +269,7 @@ actual fun FilesGrid(
                     // the list being cleared by on-dismiss before its values are used
                     val filesToBeDeleted = selectedFiles.toList()
                     scope.launch {
-                        sharedViewModel.delete(filesToBeDeleted)
+                        appViewModel.delete(filesToBeDeleted)
                     }
                     onDismissRequest()
                 }
@@ -293,7 +288,7 @@ actual fun FilesGrid(
                 },
                 onAccept = { newFilename ->
                     scope.launch {
-                        sharedViewModel.rename(file, newFilename)
+                        appViewModel.rename(file, newFilename)
                     }
                 },
                 onDecline = {
@@ -318,16 +313,33 @@ actual fun FilesGrid(
         ) {
             ContextMenu(
                 expanded = openContextMenu,
-
                 selectedFiles = selectedFiles,
-                sharedViewModel = sharedViewModel,
                 onDismissRequest = onDismissRequest,
                 onDeleteFiles = {
                     displayDeleteDialog = true
+                    scope.launch {
+                        appViewModel.delete(selectedFiles)
+                    }
                 },
-                onRenameFiles = {
+                onRenameFile = {
                     displayRenameDialog = true
-                }
+                },
+                onCreateNewFile = {
+                    scope.launch {
+                        appViewModel.createNewFile(it)
+                    }
+                },
+                onCopy = {
+                    appViewModel.copy(selectedFiles)
+                },
+                onCut = {
+                    appViewModel.cut(selectedFiles)
+                },
+                onPaste = {
+                    scope.launch {
+                        appViewModel.paste()
+                    }
+                },
             )
         }
     }

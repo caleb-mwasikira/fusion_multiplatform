@@ -34,23 +34,18 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import minio_multiplatform.composeapp.generated.resources.Res
 import minio_multiplatform.composeapp.generated.resources.content_empty
+import org.example.project.data.AppViewModel
 import org.example.project.data.FileOperations
-import org.example.project.data.SharedViewModel
 import org.example.project.dto.DirEntry
 import org.example.project.dto.formatTimeMillis
 import org.example.project.dto.getFileIcon
 import org.example.project.dto.isDirectory
-import org.example.project.screens.widgets.ConfirmationDialog
-import org.example.project.screens.widgets.ContextMenu
-import org.example.project.screens.widgets.FileItemCard
-import org.example.project.screens.widgets.RenameFileDialog
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
 actual fun FilesGrid(
-    sharedViewModel: SharedViewModel,
+    appViewModel: AppViewModel,
 ) {
-    val files by sharedViewModel.files.collectAsState()
     var openContextMenu by remember { mutableStateOf(false) }
     val selectedFiles = remember { mutableStateListOf<DirEntry>() }
     val scope = rememberCoroutineScope()
@@ -98,7 +93,7 @@ actual fun FilesGrid(
                     // the list being cleared by on-dismiss before its values are used
                     val filesToBeDeleted = selectedFiles.toList()
                     scope.launch {
-                        sharedViewModel.delete(filesToBeDeleted)
+                        appViewModel.delete(filesToBeDeleted)
                     }
                     onDismissRequest()
                 }
@@ -116,7 +111,7 @@ actual fun FilesGrid(
                 },
                 onAccept = { newFilename ->
                     scope.launch {
-                        sharedViewModel.rename(file, newFilename)
+                        appViewModel.rename(file, newFilename)
                     }
                     onDismissRequest()
                 },
@@ -126,6 +121,8 @@ actual fun FilesGrid(
                 }
             )
         }
+
+        val files by appViewModel.files.collectAsState()
 
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -172,7 +169,7 @@ actual fun FilesGrid(
 
                                 selectedFiles.clear()
                                 if (file.isDirectory()) {
-                                    sharedViewModel.changeWorkingDir(file)
+                                    appViewModel.changeWorkingDir(file)
                                 } else {
                                     scope.launch {
                                         FileOperations.open(file)
@@ -200,15 +197,33 @@ actual fun FilesGrid(
             ContextMenu(
                 expanded = openContextMenu,
                 selectedFiles = selectedFiles,
-                sharedViewModel = sharedViewModel,
                 onDismissRequest = {
                     openContextMenu = false
                 },
                 onDeleteFiles = {
                     displayDeleteDialog = true
+                    scope.launch {
+                        appViewModel.delete(selectedFiles)
+                    }
                 },
-                onRenameFiles = {
+                onRenameFile = {
                     displayRenameDialog = true
+                },
+                onCreateNewFile = {
+                    scope.launch {
+                        appViewModel.createNewFile(it)
+                    }
+                },
+                onCopy = {
+                    appViewModel.copy(selectedFiles)
+                },
+                onCut = {
+                    appViewModel.cut(selectedFiles)
+                },
+                onPaste = {
+                    scope.launch {
+                        appViewModel.paste()
+                    }
                 },
             )
         }

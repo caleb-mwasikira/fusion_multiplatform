@@ -61,7 +61,7 @@ import minio_multiplatform.composeapp.generated.resources.search_24dp
 import minio_multiplatform.composeapp.generated.resources.send_24dp
 import minio_multiplatform.composeapp.generated.resources.visibility_24dp
 import minio_multiplatform.composeapp.generated.resources.visibility_off_24dp
-import org.example.project.data.SharedViewModel
+import org.example.project.data.AppViewModel
 import org.example.project.data.UIMessages
 import org.example.project.dto.FileType
 import org.example.project.dto.getFileIcon
@@ -72,34 +72,54 @@ import java.util.Locale
 @Composable
 fun MainPanel(
     modifier: Modifier,
-    sharedViewModel: SharedViewModel,
+    appViewModel: AppViewModel,
     onOpenDrawer: (() -> Unit)?
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(32.dp),
         modifier = modifier.padding(8.dp),
     ) {
+        val scope = rememberCoroutineScope()
+
         TopBar(
-            sharedViewModel = sharedViewModel,
+            onClearSearchBar = {
+                appViewModel.refreshCurrentDir()
+            },
+            onSearchFile = { file ->
+                scope.launch {
+                    appViewModel.search(file)
+                }
+            },
             onOpenDrawer = onOpenDrawer,
         )
 
-        var addNewDevice by remember { mutableStateOf(false) }
-        val trackedDevices by sharedViewModel.trackedDevices.collectAsState()
+        var pairWithNewDevice by remember { mutableStateOf(false) }
+        val pairedDevices by appViewModel.pairedDevices.collectAsState()
+        val networkDevices by appViewModel.networkDevices.collectAsState()
 
-        if (addNewDevice) {
-            AddNewDeviceDialog(
-                sharedViewModel = sharedViewModel,
+        if (pairWithNewDevice) {
+            SelectPairingDevice(
+                networkDevices = networkDevices,
+                onPairWithDevice = { device ->
+                    scope.launch {
+                        appViewModel.pairWithNewDevice(device)
+                    }
+                },
+                refreshNetworkDevices = {
+                    scope.launch {
+                        appViewModel.getNetworkDevices()
+                    }
+                },
                 onDismissRequest = {
-                    addNewDevice = false
+                    pairWithNewDevice = false
                 },
             )
         }
 
-        if (trackedDevices.isEmpty()) {
+        if (pairedDevices.isEmpty()) {
             ElevatedButton(
                 onClick = {
-                    addNewDevice = true
+                    pairWithNewDevice = true
                 },
                 colors = ButtonDefaults.elevatedButtonColors().copy(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -116,13 +136,13 @@ fun MainPanel(
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.add_24dp),
-                        contentDescription = "Sync With New Device",
+                        contentDescription = "Pair With New Device",
                         modifier = Modifier.padding(4.dp)
                             .size(24.dp)
                     )
 
                     Text(
-                        "Sync New Device",
+                        "Pair With New Device",
                         style = MaterialTheme.typography.titleLarge,
                     )
                 }
@@ -134,7 +154,7 @@ fun MainPanel(
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
             ) {
-                trackedDevices.forEach { device ->
+                pairedDevices.forEach { device ->
                     DeviceCardExpanded(
                         device = device,
                         icon = Res.drawable.external_hard_drive,
@@ -144,27 +164,29 @@ fun MainPanel(
             }
         }
 
-        val selectedFileFilter by sharedViewModel.selectedFileFilter.collectAsState()
+        val selectedFileFilter by appViewModel.selectedFileFilter.collectAsState()
         QuickAccess(
             selectedFileFilter = selectedFileFilter,
             selectFileFilter = { filter ->
-                sharedViewModel.selectFileFilter(filter)
+                appViewModel.selectFileFilter(filter)
             }
         )
 
         Box {
-            // MyFiles
             Box {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     FilesActionBar(
-                        sharedViewModel = sharedViewModel
+                        appViewModel = appViewModel
                     )
 
+                    val files by appViewModel.files.collectAsState()
+                    val scope = rememberCoroutineScope()
+
                     FilesGrid(
-                        sharedViewModel = sharedViewModel
+                        appViewModel = appViewModel,
                     )
                 }
             }
@@ -175,7 +197,7 @@ fun MainPanel(
                 var message by remember { mutableStateOf<UIMessages?>(null) }
 
                 LaunchedEffect(Unit) {
-                    sharedViewModel.uiMessages.collectLatest {
+                    appViewModel.uiMessages.collectLatest {
                         message = it
                         delay(3000)
                         message = null
@@ -222,7 +244,8 @@ fun MainPanel(
 
 @Composable
 fun TopBar(
-    sharedViewModel: SharedViewModel,
+    onClearSearchBar: () -> Unit,
+    onSearchFile: (String) -> Unit,
     onOpenDrawer: (() -> Unit)?,
 ) {
     Row(
@@ -247,11 +270,10 @@ fun TopBar(
             }
 
             var text by remember { mutableStateOf("") }
-            val scope = rememberCoroutineScope()
 
             LaunchedEffect(text) {
                 if (text.isEmpty()) {
-                    sharedViewModel.refreshCurrentDir()
+                    onClearSearchBar()
                 }
             }
 
@@ -271,9 +293,7 @@ fun TopBar(
                     IconButton(
                         onClick = {
                             if (text.isNotEmpty()) {
-                                scope.launch {
-                                    sharedViewModel.search(text)
-                                }
+                                onSearchFile(text)
                             }
                         },
                         modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
@@ -373,7 +393,7 @@ fun QuickAccess(
 
 @Composable
 fun FilesActionBar(
-    sharedViewModel: SharedViewModel,
+    appViewModel: AppViewModel,
 ) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -394,7 +414,7 @@ fun FilesActionBar(
         ) {
             IconButton(
                 onClick = {
-                    sharedViewModel.gotoPreviousDir()
+                    appViewModel.gotoPreviousDir()
                 },
             ) {
                 Icon(
@@ -406,7 +426,7 @@ fun FilesActionBar(
 
             IconButton(
                 onClick = {
-                    sharedViewModel.gotoNextDir()
+                    appViewModel.gotoNextDir()
                 },
             ) {
                 Icon(
@@ -418,10 +438,10 @@ fun FilesActionBar(
 
             IconButton(
                 onClick = {
-                    sharedViewModel.toggleHiddenFiles()
+                    appViewModel.toggleHiddenFiles()
                 },
             ) {
-                val hidingHiddenFiles by sharedViewModel.hidingHiddenFiles.collectAsState()
+                val hidingHiddenFiles by appViewModel.hidingHiddenFiles.collectAsState()
                 val resource = if (hidingHiddenFiles) {
                     Res.drawable.visibility_24dp
                 } else {

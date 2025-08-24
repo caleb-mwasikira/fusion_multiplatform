@@ -39,13 +39,14 @@ import minio_multiplatform.composeapp.generated.resources.folder
 import minio_multiplatform.composeapp.generated.resources.manage_history_24dp
 import minio_multiplatform.composeapp.generated.resources.share_24dp
 import minio_multiplatform.composeapp.generated.resources.star_24dp
-import org.example.project.data.SharedViewModel
+import org.example.project.data.AppViewModel
+import org.example.project.dto.Device
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun SidePanel(
-    sharedViewModel: SharedViewModel,
+    pairedDevices: Set<Device>,
     modifier: Modifier,
     onUploadDirectory: () -> Unit,
 ) {
@@ -64,15 +65,14 @@ fun SidePanel(
                     ),
                 )
 
-                val trackedDevices by sharedViewModel.trackedDevices.collectAsState()
-                if (trackedDevices.isEmpty()) {
+                if (pairedDevices.isEmpty()) {
                     Text(
                         "No Connected Devices",
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
 
-                trackedDevices.forEach { device ->
+                pairedDevices.forEach { device ->
                     DeviceCard(
                         device = device,
                         icon = Res.drawable.external_hard_drive,

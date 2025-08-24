@@ -14,19 +14,21 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import org.example.project.data.SharedViewModel
-import org.example.project.theme.AppTheme
+import org.example.project.data.AppViewModel
 import org.example.project.screens.widgets.MainPanel
 import org.example.project.screens.widgets.SidePanel
 import org.example.project.screens.widgets.WindowSizeClass
+import org.example.project.theme.AppTheme
 
 @Composable
 fun MobileScreen(
-    sharedViewModel: SharedViewModel,
+    appViewModel: AppViewModel,
     onUploadDirectory: () -> Unit,
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -38,8 +40,10 @@ fun MobileScreen(
             ModalDrawerSheet(
                 modifier = Modifier.width(400.dp)
             ) {
+                val pairedDevices by appViewModel.pairedDevices.collectAsState()
+
                 SidePanel(
-                    sharedViewModel = sharedViewModel,
+                    pairedDevices = pairedDevices,
                     modifier = Modifier.fillMaxHeight()
                         .padding(8.dp),
                     onUploadDirectory = {
@@ -59,7 +63,7 @@ fun MobileScreen(
                 modifier = Modifier.fillMaxSize()
                     .padding(innerPadding)
                     .padding(12.dp),
-                sharedViewModel = sharedViewModel,
+                appViewModel = appViewModel,
                 onOpenDrawer = {
                     scope.launch {
                         if (drawerState.isOpen) drawerState.close() else drawerState.open()
@@ -72,7 +76,7 @@ fun MobileScreen(
 
 @Composable
 fun DesktopScreen(
-    sharedViewModel: SharedViewModel,
+    appViewModel: AppViewModel,
     onUploadDirectory: () -> Unit,
 ) {
     Scaffold(
@@ -82,8 +86,10 @@ fun DesktopScreen(
             modifier = Modifier.fillMaxSize()
                 .padding(innerPadding)
         ) {
+            val pairedDevices by appViewModel.pairedDevices.collectAsState()
+
             SidePanel(
-                sharedViewModel = sharedViewModel,
+                pairedDevices = pairedDevices,
                 modifier = Modifier.fillMaxHeight()
                     .width(400.dp)
                     .background(
@@ -99,7 +105,7 @@ fun DesktopScreen(
                     .weight(2f)
                     .padding(12.dp),
                 onOpenDrawer = null,
-                sharedViewModel = sharedViewModel,
+                appViewModel = appViewModel,
             )
         }
     }
@@ -108,21 +114,21 @@ fun DesktopScreen(
 @Composable
 fun App(
     windowSizeClass: WindowSizeClass,
-    sharedViewModel: SharedViewModel,
+    appViewModel: AppViewModel,
     onUploadDirectory: () -> Unit,
 ) {
     AppTheme {
         when (windowSizeClass) {
             WindowSizeClass.Compact, WindowSizeClass.Medium -> {
                 MobileScreen(
-                    sharedViewModel = sharedViewModel,
+                    appViewModel = appViewModel,
                     onUploadDirectory = onUploadDirectory,
                 )
             }
 
             WindowSizeClass.Expanded -> {
                 DesktopScreen(
-                    sharedViewModel = sharedViewModel,
+                    appViewModel = appViewModel,
                     onUploadDirectory = onUploadDirectory,
                 )
             }

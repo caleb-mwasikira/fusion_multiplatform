@@ -40,8 +40,8 @@ import minio_multiplatform.composeapp.generated.resources.create_new_file_24dp
 import minio_multiplatform.composeapp.generated.resources.create_new_folder_24dp
 import minio_multiplatform.composeapp.generated.resources.delete_24dp
 import minio_multiplatform.composeapp.generated.resources.more_horiz_24dp
+import org.example.project.data.AppViewModel
 import org.example.project.data.ClipboardAction
-import org.example.project.data.SharedViewModel
 import org.example.project.dto.DirEntry
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -50,10 +50,13 @@ import org.jetbrains.compose.resources.painterResource
 actual fun ContextMenu(
     expanded: Boolean,
     selectedFiles: List<DirEntry>,
-    sharedViewModel: SharedViewModel,
     onDismissRequest: () -> Unit,
+    onCreateNewFile: (isDirectory: Boolean) -> Unit,
+    onCopy: (List<DirEntry>) -> Unit,
+    onCut: (List<DirEntry>) -> Unit,
+    onPaste: () -> Unit,
     onDeleteFiles: () -> Unit,
-    onRenameFiles: () -> Unit,
+    onRenameFile: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -87,24 +90,17 @@ actual fun ContextMenu(
                         enabled = selectedFiles.isNotEmpty(),
                     )
 
-                    val okayToPaste by sharedViewModel.isOkayToPaste.collectAsState()
                     ContextMenuItem(
                         title = "Paste",
                         resource = Res.drawable.content_paste_24dp,
-                        onClick = {
-                            scope.launch {
-                                sharedViewModel.paste()
-                            }
-                            onDismissRequest()
-                        },
-                        enabled = okayToPaste
+                        onClick = onPaste,
+                        enabled = true,
                     )
                     ContextMenuItem(
                         title = "Cut",
                         resource = Res.drawable.content_cut_24dp,
                         onClick = {
-                            sharedViewModel.copyOrCut(selectedFiles, ClipboardAction.Cut)
-                            onDismissRequest()
+                            onCut(selectedFiles)
                         },
                         enabled = selectedFiles.isNotEmpty(),
                     )
@@ -112,8 +108,7 @@ actual fun ContextMenu(
                         title = "Copy",
                         resource = Res.drawable.content_copy_24dp,
                         onClick = {
-                            sharedViewModel.copyOrCut(selectedFiles, ClipboardAction.Copy)
-                            onDismissRequest()
+                            onCopy(selectedFiles)
                         },
                         enabled = selectedFiles.isNotEmpty(),
                     )
@@ -126,13 +121,8 @@ actual fun ContextMenu(
                             openSecondaryContextMenu = false
                             onDismissRequest()
                         },
-                        onCreateNewFile = { isDirectory ->
-                            scope.launch {
-                                sharedViewModel.createNewFile(isDirectory)
-                            }
-                            onDismissRequest()
-                        },
-                        onRenameFiles = onRenameFiles,
+                        onCreateNewFile = onCreateNewFile,
+                        onRenameFile = onRenameFile,
                     )
 
                     ContextMenuItem(
@@ -194,7 +184,7 @@ fun SecondaryContextMenu(
     numSelectedFiles: Int,
     onDismissRequest: () -> Unit,
     onCreateNewFile: (isDirectory: Boolean) -> Unit,
-    onRenameFiles: () -> Unit,
+    onRenameFile: () -> Unit,
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -236,7 +226,7 @@ fun SecondaryContextMenu(
                 Text("Rename", style = MaterialTheme.typography.titleMedium)
             },
             leadingIcon = {},
-            onClick = onRenameFiles,
+            onClick = onRenameFile,
             enabled = numSelectedFiles > 0,
         )
     }

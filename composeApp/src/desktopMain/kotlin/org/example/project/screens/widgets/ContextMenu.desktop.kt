@@ -18,8 +18,8 @@ import minio_multiplatform.composeapp.generated.resources.content_paste_24dp
 import minio_multiplatform.composeapp.generated.resources.create_new_file_24dp
 import minio_multiplatform.composeapp.generated.resources.create_new_folder_24dp
 import minio_multiplatform.composeapp.generated.resources.delete_24dp
+import org.example.project.data.AppViewModel
 import org.example.project.data.ClipboardAction
-import org.example.project.data.SharedViewModel
 import org.example.project.dto.DirEntry
 import org.jetbrains.compose.resources.painterResource
 
@@ -27,13 +27,14 @@ import org.jetbrains.compose.resources.painterResource
 actual fun ContextMenu(
     expanded: Boolean,
     selectedFiles: List<DirEntry>,
-    sharedViewModel: SharedViewModel,
     onDismissRequest: () -> Unit,
+    onCreateNewFile: (isDirectory: Boolean) -> Unit,
+    onCopy: (List<DirEntry>) -> Unit,
+    onCut: (List<DirEntry>) -> Unit,
+    onPaste: () -> Unit,
     onDeleteFiles: () -> Unit,
-    onRenameFiles: () -> Unit,
+    onRenameFile: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-
     Box {
         DropdownMenu(
             expanded = expanded,
@@ -49,11 +50,7 @@ actual fun ContextMenu(
                         contentDescription = "Create New Folder"
                     )
                 },
-                onClick = {
-                    scope.launch {
-                        sharedViewModel.createNewFile(isDirectory = true)
-                    }
-                },
+                onClick = { onCreateNewFile(true) },
             )
             DropdownMenuItem(
                 text = {
@@ -65,11 +62,7 @@ actual fun ContextMenu(
                         contentDescription = "Create New File"
                     )
                 },
-                onClick = {
-                    scope.launch {
-                        sharedViewModel.createNewFile(isDirectory = false)
-                    }
-                },
+                onClick = { onCreateNewFile(false) },
             )
             DropdownMenuItem(
                 text = {
@@ -82,8 +75,7 @@ actual fun ContextMenu(
                     )
                 },
                 onClick = {
-                    sharedViewModel.copyOrCut(selectedFiles, ClipboardAction.Cut)
-                    onDismissRequest()
+                    onCut(selectedFiles)
                 },
                 enabled = selectedFiles.isNotEmpty()
             )
@@ -98,8 +90,7 @@ actual fun ContextMenu(
                     )
                 },
                 onClick = {
-                    sharedViewModel.copyOrCut(selectedFiles, ClipboardAction.Copy)
-                    onDismissRequest()
+                    onCopy(selectedFiles)
                 },
                 enabled = selectedFiles.isNotEmpty()
             )
@@ -109,11 +100,10 @@ actual fun ContextMenu(
                     Text("Rename", style = MaterialTheme.typography.titleMedium)
                 },
                 leadingIcon = {},
-                onClick = onRenameFiles,
+                onClick = onRenameFile,
                 enabled = selectedFiles.isNotEmpty()
             )
 
-            val okayToPaste by sharedViewModel.isOkayToPaste.collectAsState()
             DropdownMenuItem(
                 text = {
                     Text("Paste", style = MaterialTheme.typography.titleMedium)
@@ -125,12 +115,8 @@ actual fun ContextMenu(
                     )
                 },
                 onClick = {
-                    scope.launch {
-                        sharedViewModel.paste()
-                    }
-                    onDismissRequest()
+                    onPaste()
                 },
-                enabled = okayToPaste
             )
 
             DropdownMenuItem(
